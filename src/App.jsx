@@ -1,10 +1,12 @@
 /**
  * AI Grader Sistem
- * Aplikasi koreksi Lembar Jawaban Komputer (LJK) otomatis untuk instrumen
- * psikologis dan tes inteligensi, berbasis Google Gemini Vision API.
+ * Aplikasi koreksi Lembar Jawaban Komputer (LJK) untuk instrumen psikologis dan
+ * tes inteligensi.
  *
- * Arsitektur: client-side murni (tanpa backend). Seluruh pemrosesan citra,
- * penilaian, analisis butir, dan pembuatan laporan berlangsung di peramban.
+ * Arsitektur: luring penuh. Pembacaan lembar dilakukan oleh mesin OMR berbasis
+ * Canvas 2D di dalam peramban, tanpa panggilan jaringan, tanpa model bahasa,
+ * dan tanpa kunci API. Penyekoran, konversi norma, analisis butir, serta
+ * penyusunan laporan seluruhnya berjalan di perangkat.
  */
 
 import React, {
@@ -19,56 +21,65 @@ import {
   Award,
   BarChart3,
   Building2,
+  Camera,
   CheckCircle2,
   ChevronDown,
   ClipboardList,
   Copy,
+  Crosshair,
   Download,
   Eraser,
   Eye,
   FileSpreadsheet,
   FileText,
   GraduationCap,
+  Grid3x3,
   Image as ImageIcon,
   Info,
+  Keyboard,
   KeyRound,
   Layers,
   ListChecks,
   Loader2,
-  Lock,
   Pencil,
   Play,
   Printer,
+  Ruler,
   ScanLine,
   Search,
   Settings2,
   Sigma,
-  Sparkles,
   Table2,
   Trash2,
   Upload,
   Users,
   Wand2,
+  WifiOff,
   X,
   XCircle,
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
+import {
+  DEFAULT_LAYOUT,
+  LAYOUT_BOUNDS,
+  PX_PER_MM,
+  computeBubbleCenters,
+  computeFiducials,
+  computeLayoutMetrics,
+  computeNumberAnchors,
+  computePageItems,
+  normalizeLayout,
+} from './ljk/layout.js';
+import { DEFAULT_OMR_OPTIONS, detectSheet, grayscaleFromSource } from './ljk/omr.js';
+import { capturePhoto, isNativeAndroid, saveBinaryFile } from './platform.js';
+
 /* ------------------------------------------------------------------ *
  * 1. KONSTANTA DOMAIN
  * ------------------------------------------------------------------ */
 
-const STORAGE_KEY = 'ai-grader-sistem:v1';
-const API_KEY_STORAGE = 'ai-grader-sistem:gemini-key';
-
-const GEMINI_MODELS = [
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash — cepat, hemat kuota' },
-  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro — presisi tertinggi' },
-  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash — alternatif stabil' },
-];
-
-const OPTION_PRESETS = ['ABCD', 'ABCDE'];
+const STORAGE_KEY = 'ai-grader-sistem:v2';
 
 const INSTRUMENT_TYPES = [
   'Tes Inteligensi (IQ)',
@@ -100,16 +111,14 @@ const DEFAULT_CONFIG = {
   instrumentType: 'Tes Inteligensi (IQ)',
   examiner: '',
   testDate: new Date().toISOString().slice(0, 10),
-  numQuestions: 30,
-  optionSet: 'ABCDE',
   penalty: false,
   scaleMax: 100,
   passingScore: 60,
-  model: 'gemini-2.5-flash',
   normMode: 'sample', // 'sample' | 'manual'
   normMean: 15,
   normSd: 5,
   showDetailPages: true,
+  mergeByName: false,
 };
 
 /* ------------------------------------------------------------------ *
@@ -181,9 +190,8 @@ function drawToDataUrl(image, maxDim, quality) {
  * Menormalkan citra LJK sebelum dikirim ke API: resolusi dibatasi agar
  * muatan permintaan tetap ringan tanpa mengorbankan keterbacaan bulatan.
  */
-async function prepareImage(file) {
-  const original = await fileToDataUrl(file);
-  const image = await loadImageElement(original);
+async function prepareImageFromDataUrl(dataUrl) {
+  const image = await loadImageElement(dataUrl);
   return {
     full: drawToDataUrl(image, 1600, 0.9),
     thumb: drawToDataUrl(image, 220, 0.7),
@@ -192,209 +200,89 @@ async function prepareImage(file) {
   };
 }
 
-const stripBase64 = (dataUrl) => String(dataUrl || '').split(',')[1] || '';
+async function prepareImage(file) {
+  return prepareImageFromDataUrl(await fileToDataUrl(file));
+}
+
 
 /* ------------------------------------------------------------------ *
- * 3. LAPISAN VISI: PROMPT, PEMANGGILAN API, DAN PARSING
+ * 3. LAPISAN PEMBACAAN LURING (OMR) DAN ENTRI MANUAL
  * ------------------------------------------------------------------ */
 
+/** Menyalin hasil deteksi satu halaman ke larik jawaban sepanjang seluruh tes. */
+function answersFromDetection(detection, layout, previous) {
+  const answers = Array.from({ length: layout.numQuestions }, (_, index) => previous?.[index] ?? null);
+  detection.answers.forEach((letter, no) => {
+    if (no >= 1 && no <= layout.numQuestions) answers[no - 1] = letter;
+  });
+  return answers;
+}
+
+/** Membaca satu lembar sepenuhnya di perangkat. */
+async function readSheetOffline(sheet, layout, omrOptions) {
+  if (!sheet.image) {
+    throw new Error('Citra tidak tersedia pada sesi ini. Unggah atau potret ulang lembarnya.');
+  }
+  const grayscale = await grayscaleFromSource(sheet.image, omrOptions.maxDim);
+  const detection = detectSheet(grayscale, layout, sheet.pageIndex || 0, omrOptions);
+  if (!detection.ok) throw new Error(detection.error);
+  return detection;
+}
+
+/** Menerjemahkan tempelan string jawaban menjadi larik, mengabaikan pemisah apa pun. */
+function parseBulkAnswers(text, layout) {
+  const letters = String(text || '')
+    .toUpperCase()
+    .replace(/[^A-Z-]/g, '')
+    .split('');
+  const answers = new Array(layout.numQuestions).fill(null);
+  letters.slice(0, layout.numQuestions).forEach((letter, index) => {
+    answers[index] = layout.optionSet.includes(letter) ? letter : null;
+  });
+  return answers;
+}
+
 /**
- * Prompt disusun deterministik: satu tugas, satu format keluaran, tanpa ruang
- * bagi model untuk menambahkan narasi. Instruksi eksplisit mengenai dua bentuk
- * penandaan (silang dan bulatan dihitamkan) menekan kesalahan klasifikasi
- * penanda yang lazim terjadi pada lembar jawaban hasil pemindaian ponsel.
+ * Lapisan kalibrasi: menggambar citra beserta titik sampel yang benar-benar
+ * dibaca detektor, sehingga pemeriksa dapat menilai sendiri apakah grid jatuh
+ * tepat di atas bulatan sebelum memproses seluruh antrean.
  */
-function buildVisionPrompt(numQuestions, optionSet) {
-  const options = optionSet.split('').join('/');
-  return [
-    `Analisis gambar LJK ini, deteksi nama siswa dan jawaban pilihan ganda nomor 1 sampai ${numQuestions}.`,
-    '',
-    'Aturan pembacaan:',
-    `1. Pilihan jawaban yang sah hanya ${options}.`,
-    '2. Jawaban dapat ditandai dengan silang (X) pada huruf/kotak, atau dengan bulatan yang dihitamkan penuh (●). Perlakukan keduanya sebagai penandaan yang setara.',
-    '3. Jika satu nomor tidak ditandai, ditandai lebih dari satu, atau penandaannya ragu/terhapus, isi "ans" dengan null.',
-    '4. Baca nomor butir sesuai label yang tercetak pada lembar, bukan urutan visual kolom. Lembar dapat tersusun dalam beberapa kolom.',
-    '5. Nama siswa diambil dari kolom identitas di bagian atas lembar, tulis dalam HURUF KAPITAL tanpa gelar. Jika tidak terbaca, isi dengan "TIDAK TERBACA".',
-    '6. Jangan menebak, jangan melengkapi nomor yang tidak ada pada lembar.',
-    '',
-    'Outputkan JSON murni tanpa penjelasan, tanpa markdown, tanpa blok kode:',
-    '{',
-    '  "name": "NAMA SISWA",',
-    '  "answers": [',
-    '    { "no": 1, "ans": "A" },',
-    '    { "no": 2, "ans": "B" }',
-    '  ]',
-    '}',
-  ].join('\n');
-}
-
-class GeminiError extends Error {
-  constructor(message, status) {
-    super(message);
-    this.name = 'GeminiError';
-    this.status = status;
-  }
-}
-
-function describeHttpError(status, payload) {
-  const apiMessage = payload?.error?.message;
-  if (status === 400 && /API key not valid/i.test(apiMessage || '')) {
-    return 'API key Gemini tidak valid. Periksa kembali kunci pada panel Konfigurasi.';
-  }
-  if (status === 403) {
-    return 'Akses ditolak (403). Pastikan Generative Language API telah diaktifkan untuk kunci tersebut.';
-  }
-  if (status === 429) {
-    return 'Kuota permintaan terlampaui (429). Turunkan kecepatan pemrosesan atau tunggu beberapa saat.';
-  }
-  if (status >= 500) {
-    return `Layanan Gemini sedang bermasalah (${status}). Coba ulangi beberapa saat lagi.`;
-  }
-  return apiMessage || `Permintaan gagal dengan status ${status}.`;
-}
-
-async function requestGemini({ apiKey, model, prompt, base64, mimeType, signal }) {
-  const endpoint =
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}` +
-    `:generateContent?key=${encodeURIComponent(apiKey)}`;
-
-  const body = {
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: mimeType || 'image/jpeg', data: base64 } },
-        ],
-      },
-    ],
-    generationConfig: {
-      temperature: 0,
-      topP: 0.1,
-      maxOutputTokens: 8192,
-      responseMimeType: 'application/json',
-    },
-  };
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal,
+async function paintDetectionOverlay(canvas, imageSrc, detection, omrOptions) {
+  if (!canvas || !imageSrc) return;
+  const image = await new Promise((resolve, reject) => {
+    const element = new window.Image();
+    element.onload = () => resolve(element);
+    element.onerror = () => reject(new Error('Citra tidak dapat dimuat.'));
+    element.src = imageSrc;
   });
 
-  if (!response.ok) {
-    let payload = null;
-    try {
-      payload = await response.json();
-    } catch (error) {
-      payload = null;
-    }
-    throw new GeminiError(describeHttpError(response.status, payload), response.status);
-  }
+  const scale = Math.min(1, omrOptions.maxDim / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  canvas.width = width;
+  canvas.height = height;
 
-  const payload = await response.json();
-  const blocked = payload?.promptFeedback?.blockReason;
-  if (blocked) {
-    throw new GeminiError(`Permintaan diblokir oleh filter keamanan (${blocked}).`);
-  }
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
 
-  const text = (payload?.candidates?.[0]?.content?.parts || [])
-    .map((part) => part?.text)
-    .filter(Boolean)
-    .join('\n')
-    .trim();
+  if (!detection?.ok) return;
 
-  if (!text) throw new GeminiError('Model tidak mengembalikan teks apa pun.');
-  return text;
-}
+  Object.values(detection.fiducials).forEach((fiducial) => {
+    ctx.strokeStyle = '#0ea5e9';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(fiducial.minX - 3, fiducial.minY - 3, fiducial.boxWidth + 6, fiducial.boxHeight + 6);
+  });
 
-/** Pemanggilan dengan backoff eksponensial untuk galat transien (429/5xx). */
-async function requestGeminiWithRetry(params, attempts = 3) {
-  let lastError = null;
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      return await requestGemini(params);
-    } catch (error) {
-      lastError = error;
-      const transient = error instanceof GeminiError && (error.status === 429 || error.status >= 500);
-      if (!transient || attempt === attempts - 1) throw error;
-      await sleep(1200 * 2 ** attempt);
-    }
-  }
-  throw lastError;
-}
-
-/**
- * Model kadang membungkus JSON dalam blok kode atau memakai kutip tunggal.
- * Ekstraksi dilakukan berlapis agar kegagalan parsing tidak membatalkan
- * seluruh berkas dalam satu antrean pemrosesan.
- */
-function extractJsonObject(text) {
-  let candidate = String(text || '').trim();
-  candidate = candidate.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
-
-  const start = candidate.indexOf('{');
-  const end = candidate.lastIndexOf('}');
-  if (start !== -1 && end !== -1 && end > start) {
-    candidate = candidate.slice(start, end + 1);
-  }
-
-  try {
-    return JSON.parse(candidate);
-  } catch (error) {
-    const repaired = candidate
-      .replace(/'/g, '"')
-      .replace(/,(\s*[}\]])/g, '$1')
-      .replace(/\bNone\b/g, 'null')
-      .replace(/\b(True|False)\b/g, (match) => match.toLowerCase());
-    return JSON.parse(repaired);
-  }
-}
-
-function normalizeAnswerToken(value, optionSet) {
-  if (value === null || value === undefined) return null;
-  const token = String(value).trim().toUpperCase();
-  if (!token || ['-', 'NULL', 'NONE', 'KOSONG', 'TIDAK', 'N/A'].includes(token)) return null;
-  const letter = token[0];
-  return optionSet.includes(letter) ? letter : null;
-}
-
-/** Mengubah keluaran model menjadi larik jawaban berindeks 0..n-1. */
-function normalizeVisionResult(parsed, numQuestions, optionSet) {
-  const answers = new Array(numQuestions).fill(null);
-  const raw = parsed?.answers ?? parsed?.jawaban ?? [];
-
-  if (Array.isArray(raw)) {
-    raw.forEach((entry, index) => {
-      if (entry && typeof entry === 'object') {
-        const no = Number(entry.no ?? entry.nomor ?? entry.number ?? index + 1);
-        if (Number.isInteger(no) && no >= 1 && no <= numQuestions) {
-          answers[no - 1] = normalizeAnswerToken(entry.ans ?? entry.answer ?? entry.jawaban, optionSet);
-        }
-      } else if (index < numQuestions) {
-        answers[index] = normalizeAnswerToken(entry, optionSet);
-      }
-    });
-  } else if (raw && typeof raw === 'object') {
-    Object.entries(raw).forEach(([key, value]) => {
-      const no = Number(key);
-      if (Number.isInteger(no) && no >= 1 && no <= numQuestions) {
-        answers[no - 1] = normalizeAnswerToken(value, optionSet);
-      }
-    });
-  } else if (typeof raw === 'string') {
-    raw
-      .replace(/[^A-Za-z-]/g, '')
-      .split('')
-      .slice(0, numQuestions)
-      .forEach((letter, index) => {
-        answers[index] = normalizeAnswerToken(letter, optionSet);
-      });
-  }
-
-  const name = String(parsed?.name ?? parsed?.nama ?? '').trim().toUpperCase() || 'TIDAK TERBACA';
-  return { name, answers };
+  detection.samples.forEach((sample) => {
+    const marked = sample.net >= omrOptions.fillThreshold;
+    ctx.beginPath();
+    ctx.arc(sample.x, sample.y, sample.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = marked ? '#059669' : 'rgba(148, 163, 184, 0.75)';
+    ctx.lineWidth = marked ? 2 : 1;
+    ctx.stroke();
+  });
 }
 
 /* ------------------------------------------------------------------ *
@@ -641,10 +529,16 @@ async function exportElementToPdf(element, filename, orientation = 'portrait') {
     heightLeft -= pageHeight;
   }
 
-  pdf.save(filename);
+  // Di WebView Android elemen <a download> tidak berfungsi, sehingga berkas
+  // ditulis lewat Filesystem lalu diserahkan ke lembar berbagi sistem.
+  return saveBinaryFile({
+    filename,
+    blob: pdf.output('blob'),
+    mimeType: 'application/pdf',
+  });
 }
 
-function downloadCsv(rows, config, filename) {
+function buildCsv(rows, config) {
   const header = [
     'No',
     'Nama',
@@ -682,14 +576,12 @@ function downloadCsv(rows, config, filename) {
       .join(','),
   );
 
-  const csv = '﻿' + [header.map(escape).join(','), ...body].join('\r\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  return '﻿' + [header.map(escape).join(','), ...body].join('\r\n');
+}
+
+function exportCsv(rows, config, filename) {
+  const blob = new Blob([buildCsv(rows, config)], { type: 'text/csv;charset=utf-8;' });
+  return saveBinaryFile({ filename, blob, mimeType: 'text/csv' });
 }
 
 /* ------------------------------------------------------------------ *
@@ -865,117 +757,122 @@ function EmptyState({ icon: Icon, title, children }) {
 }
 
 /* ------------------------------------------------------------------ *
- * 7. TEMPLATE LJK 3 KOLOM (SIAP CETAK)
+ * 7. TEMPLATE LJK (DIRENDER DARI GEOMETRI MILIMETER)
  * ------------------------------------------------------------------ */
 
-function IdentityBox({ label, width = 'flex-1' }) {
-  return (
-    <div className={cx('flex items-end gap-2', width)}>
-      <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-black">{label}</span>
-      <span className="h-[18px] flex-1 border-b border-dotted border-black" />
-    </div>
-  );
-}
+const mm = (value) => `${value * PX_PER_MM}px`;
 
-function BubbleRow({ no, optionSet }) {
+function IdentityLine({ label, widthMm, layout }) {
   return (
-    <div className="flex items-center gap-2 py-[3.5px]">
-      <span className="w-7 shrink-0 text-right text-[10px] font-bold tabular-nums text-black">{no}.</span>
-      <div className="flex gap-[7px]">
-        {optionSet.split('').map((letter) => (
-          <span
-            key={letter}
-            className="flex h-[17px] w-[17px] items-center justify-center rounded-full border border-black text-[8px] font-semibold leading-none text-black"
-          >
-            {letter}
-          </span>
-        ))}
-      </div>
+    <div className="flex items-end gap-2" style={{ width: mm(widthMm) }}>
+      <span
+        className="whitespace-nowrap font-bold uppercase tracking-wide text-black"
+        style={{ fontSize: mm(2.4) }}
+      >
+        {label}
+      </span>
+      <span className="flex-1 border-b border-dotted border-black" style={{ height: mm(4) }} />
     </div>
-  );
-}
-
-function CornerMarks() {
-  return (
-    <>
-      <span className="absolute left-6 top-6 h-3.5 w-3.5 bg-black" />
-      <span className="absolute right-6 top-6 h-3.5 w-3.5 bg-black" />
-      <span className="absolute bottom-6 left-6 h-3.5 w-3.5 bg-black" />
-      <span className="absolute bottom-6 right-6 h-3.5 w-3.5 bg-black" />
-    </>
   );
 }
 
 /**
- * Lembar jawaban dirancang dengan tiga kolom, penomoran mengalir ke bawah pada
- * setiap kolom, disertai penanda sudut sebagai acuan orientasi saat pemindaian
- * dilakukan dengan kamera ponsel.
+ * Lembar jawaban dirender dari koordinat milimeter yang sama dengan yang
+ * disampel detektor. Penanda sudut berfungsi sebagai acuan homografi, sehingga
+ * lembar tetap terbaca meski dipotret miring dari kamera ponsel.
  */
-function AnswerSheetTemplate({ config, rowsPerColumn, innerRef }) {
-  const { numQuestions, optionSet } = config;
-  const perPage = rowsPerColumn * 3;
-  const pageCount = Math.max(1, Math.ceil(numQuestions / perPage));
-  const pages = Array.from({ length: pageCount }, (_, page) => page);
+function AnswerSheetTemplate({ config, layout, innerRef }) {
+  const metrics = computeLayoutMetrics(layout);
+  const normalized = metrics.layout;
+  const fiducials = computeFiducials(normalized);
+  const pages = Array.from({ length: metrics.pageCount }, (_, index) => index);
+
+  const headerTopMm = normalized.marginMm;
+  const headerHeightMm = normalized.gridTopMm - normalized.marginMm - 4;
+  const innerWidthMm = normalized.pageWidthMm - 2 * normalized.marginMm;
+  const bubbleFontPx = normalized.bubbleDiameterMm * 0.4 * PX_PER_MM;
 
   return (
     <div ref={innerRef} className="print-area space-y-6">
       {pages.map((page) => {
-        const start = page * perPage;
-        const onThisPage = Math.min(perPage, numQuestions - start);
-        // Kolom diseimbangkan agar butir tersebar merata, bukan menumpuk di kolom pertama.
-        const rowsHere = Math.ceil(onThisPage / 3);
-        const columns = [0, 1, 2].map((col) =>
-          Array.from({ length: rowsHere }, (_, row) => start + col * rowsHere + row + 1).filter(
-            (no) => no <= start + onThisPage,
-          ),
-        );
+        const centers = computeBubbleCenters(normalized, page);
+        const anchors = computeNumberAnchors(normalized, page);
+        const { count, start } = computePageItems(normalized, page);
 
         return (
           <div
             key={page}
             className={cx(
-              'a4-canvas relative mx-auto border border-slate-300 px-10 py-9 font-sans text-black',
-              page < pageCount - 1 && 'print-break',
+              'relative mx-auto overflow-hidden border border-slate-300 bg-white font-sans text-black',
+              page < metrics.pageCount - 1 && 'print-break',
             )}
+            style={{ width: mm(normalized.pageWidthMm), height: mm(normalized.pageHeightMm) }}
           >
-            <CornerMarks />
+            {fiducials.map((fiducial) => (
+              <span
+                key={fiducial.key}
+                className="absolute bg-black"
+                style={{
+                  width: mm(normalized.fiducialSizeMm),
+                  height: mm(normalized.fiducialSizeMm),
+                  left: mm(fiducial.xMm - normalized.fiducialSizeMm / 2),
+                  top: mm(fiducial.yMm - normalized.fiducialSizeMm / 2),
+                }}
+              />
+            ))}
 
-            <header className="border-b-2 border-black pb-3">
-              <div className="flex items-start justify-between gap-4">
+            <div
+              className="absolute"
+              style={{
+                left: mm(normalized.marginMm),
+                top: mm(headerTopMm),
+                width: mm(innerWidthMm),
+                height: mm(headerHeightMm),
+              }}
+            >
+              <div className="flex items-start justify-between gap-4 border-b-2 border-black pb-1.5">
                 <div>
-                  <p className="text-[13px] font-extrabold uppercase leading-tight tracking-wide">
+                  <p className="font-extrabold uppercase leading-tight tracking-wide" style={{ fontSize: mm(3.4) }}>
                     {config.institution || 'Nama Institusi'}
                   </p>
-                  <p className="text-[10px] leading-tight">{config.unit}</p>
+                  <p className="leading-tight" style={{ fontSize: mm(2.5) }}>
+                    {config.unit}
+                  </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[11px] font-bold uppercase">Lembar Jawaban Komputer</p>
-                  <p className="text-[10px]">
-                    Halaman {page + 1} dari {pageCount}
+                  <p className="font-bold uppercase" style={{ fontSize: mm(2.8) }}>
+                    Lembar Jawaban Komputer
+                  </p>
+                  <p style={{ fontSize: mm(2.5) }}>
+                    Halaman {page + 1} dari {metrics.pageCount}
                   </p>
                 </div>
               </div>
-              <p className="mt-2 text-[11px] font-bold uppercase tracking-wide">
+
+              <p className="mt-1.5 font-bold uppercase tracking-wide" style={{ fontSize: mm(2.9) }}>
                 {config.testName} — {config.instrumentType}
               </p>
-            </header>
 
-            {page === 0 ? (
-              <>
-                <div className="mt-4 space-y-2.5 rounded border border-black px-4 py-3">
-                  <div className="flex gap-6">
-                    <IdentityBox label="Nama" />
-                    <IdentityBox label="No. Peserta" width="w-52" />
-                  </div>
-                  <div className="flex gap-6">
-                    <IdentityBox label="Kelas / Unit" />
-                    <IdentityBox label="Tanggal" width="w-52" />
-                  </div>
+              <div className="mt-2 border border-black" style={{ padding: mm(2) }}>
+                <div className="flex" style={{ gap: mm(6) }}>
+                  <IdentityLine label="Nama" widthMm={innerWidthMm * 0.55} layout={normalized} />
+                  <IdentityLine label="No. Peserta" widthMm={innerWidthMm * 0.35} layout={normalized} />
                 </div>
+                <div className="mt-1 flex" style={{ gap: mm(6) }}>
+                  <IdentityLine label="Kelas / Unit" widthMm={innerWidthMm * 0.55} layout={normalized} />
+                  <IdentityLine label="Tanggal" widthMm={innerWidthMm * 0.35} layout={normalized} />
+                </div>
+              </div>
 
-                <div className="mt-3 rounded border border-black bg-slate-50 px-4 py-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wide">Petunjuk Pengisian</p>
-                  <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-[9.5px] leading-relaxed">
+              {page === 0 ? (
+                <div className="mt-2 border border-black bg-slate-50" style={{ padding: mm(2) }}>
+                  <p className="font-bold uppercase tracking-wide" style={{ fontSize: mm(2.4) }}>
+                    Petunjuk Pengisian
+                  </p>
+                  <ol
+                    className="mt-0.5 list-decimal leading-snug"
+                    style={{ fontSize: mm(2.2), paddingLeft: mm(4) }}
+                  >
                     <li>Tulis nama dengan HURUF KAPITAL yang jelas pada kolom identitas.</li>
                     <li>Gunakan pensil 2B atau pulpen hitam. Jangan gunakan tipp-ex.</li>
                     <li>
@@ -983,36 +880,63 @@ function AnswerSheetTemplate({ config, rowsPerColumn, innerRef }) {
                       pilihan saja.
                     </li>
                     <li>Jawaban ganda, ragu, atau terhapus tidak akan dinilai.</li>
-                    <li>Jaga lembar tetap rata dan bersih agar terbaca oleh sistem koreksi otomatis.</li>
+                    <li>Jaga keempat kotak hitam di sudut lembar tetap bersih — kotak itu acuan pemindai.</li>
                   </ol>
                 </div>
-              </>
-            ) : (
-              <div className="mt-4 flex gap-6 rounded border border-black px-4 py-2">
-                <IdentityBox label="Nama" />
-                <IdentityBox label="No. Peserta" width="w-52" />
-              </div>
-            )}
-
-            <div className="mt-4 grid grid-cols-3 gap-4">
-              {columns.map((column, index) => (
-                <div key={index} className="rounded border border-black px-2.5 py-2">
-                  {column.length ? (
-                    column.map((no) => <BubbleRow key={no} no={no} optionSet={optionSet} />)
-                  ) : (
-                    <div className="py-2 text-center text-[9px] text-slate-400">—</div>
-                  )}
-                </div>
-              ))}
+              ) : null}
             </div>
 
-            <footer className="absolute inset-x-10 bottom-10 flex items-end justify-between border-t border-black pt-2 text-[9px]">
-              <span>Jumlah butir: {numQuestions} — Opsi: {optionSet.split('').join('/')}</span>
+            {anchors.map((anchor) => (
+              <span
+                key={`no-${anchor.no}`}
+                className="absolute text-right font-bold tabular-nums text-black"
+                style={{
+                  left: mm(anchor.xMm),
+                  top: mm(anchor.yMm - normalized.rowPitchMm / 2),
+                  width: mm(anchor.widthMm),
+                  height: mm(normalized.rowPitchMm),
+                  lineHeight: mm(normalized.rowPitchMm),
+                  fontSize: mm(2.6),
+                }}
+              >
+                {anchor.no}.
+              </span>
+            ))}
+
+            {centers.map((center) => (
+              <span
+                key={`${center.no}-${center.option}`}
+                className="absolute flex items-center justify-center rounded-full border border-black font-semibold leading-none text-black"
+                style={{
+                  width: mm(normalized.bubbleDiameterMm),
+                  height: mm(normalized.bubbleDiameterMm),
+                  left: mm(center.xMm - normalized.bubbleDiameterMm / 2),
+                  top: mm(center.yMm - normalized.bubbleDiameterMm / 2),
+                  fontSize: `${bubbleFontPx}px`,
+                }}
+              >
+                {center.option}
+              </span>
+            ))}
+
+            <div
+              className="absolute flex items-end justify-between border-t border-black"
+              style={{
+                left: mm(normalized.marginMm),
+                right: mm(normalized.marginMm),
+                bottom: mm(normalized.marginMm + 2),
+                paddingTop: mm(1.5),
+                fontSize: mm(2.3),
+              }}
+            >
+              <span>
+                Butir {start + 1}–{start + count} — Opsi: {normalized.optionSet.split('').join('/')}
+              </span>
               <span className="text-right">
                 Paraf Pengawas
-                <span className="mt-4 block h-[1px] w-28 bg-black" />
+                <span className="mt-3 block bg-black" style={{ width: mm(25), height: '1px' }} />
               </span>
-            </footer>
+            </div>
           </div>
         );
       })}
@@ -1402,28 +1326,29 @@ function AnswerKeyEditor({ config, answerKey, onChange, sheets }) {
 }
 
 /* ------------------------------------------------------------------ *
- * 10. PANEL PEMINDAIAN LJK
+ * 10. PANEL PEMINDAIAN LJK (OMR LURING) DAN ENTRI MANUAL
  * ------------------------------------------------------------------ */
 
 const STATUS_META = {
   pending: { label: 'Menunggu', tone: 'bg-slate-100 text-slate-600', icon: ImageIcon },
-  processing: { label: 'Diproses', tone: 'bg-sky-100 text-sky-700', icon: Loader2 },
+  processing: { label: 'Dibaca', tone: 'bg-sky-100 text-sky-700', icon: Loader2 },
   done: { label: 'Selesai', tone: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
   error: { label: 'Gagal', tone: 'bg-rose-100 text-rose-700', icon: XCircle },
 };
 
-function SheetCard({ sheet, onRemove, onInspect }) {
+function SheetCard({ sheet, metrics, onRemove, onInspect, onRename, onPageIndex, onCalibrate }) {
   const meta = STATUS_META[sheet.status] || STATUS_META.pending;
   const Icon = meta.icon;
+  const marked = sheet.answers?.filter(Boolean).length || 0;
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
       <div className="relative aspect-[3/4] bg-slate-100">
         {sheet.thumb ? (
           <img src={sheet.thumb} alt={sheet.fileName} className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full items-center justify-center text-slate-300">
-            <ImageIcon className="h-8 w-8" />
+            <Keyboard className="h-8 w-8" />
           </div>
         )}
         <span
@@ -1433,14 +1358,24 @@ function SheetCard({ sheet, onRemove, onInspect }) {
           )}
         >
           <Icon className={cx('h-3 w-3', sheet.status === 'processing' && 'animate-spin')} />
-          {meta.label}
+          {sheet.source === 'manual' ? 'Manual' : meta.label}
         </span>
-        <div className="absolute inset-x-0 bottom-0 flex justify-end gap-1 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute right-1.5 top-1.5 flex flex-col gap-1">
+          {sheet.image ? (
+            <button
+              type="button"
+              onClick={() => onCalibrate(sheet.id)}
+              className="rounded-md bg-white/90 p-1.5 text-slate-600 hover:bg-white"
+              title="Kalibrasi pembacaan"
+            >
+              <Crosshair className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
           {sheet.status === 'done' ? (
             <button
               type="button"
               onClick={() => onInspect(sheet.id)}
-              className="rounded-md bg-white/90 p-1.5 text-slate-700 hover:bg-white"
+              className="rounded-md bg-white/90 p-1.5 text-slate-600 hover:bg-white"
               title="Periksa hasil"
             >
               <Eye className="h-3.5 w-3.5" />
@@ -1456,25 +1391,314 @@ function SheetCard({ sheet, onRemove, onInspect }) {
           </button>
         </div>
       </div>
-      <div className="px-2.5 py-2">
-        <p className="truncate text-xs font-semibold text-slate-800" title={sheet.name || sheet.fileName}>
-          {sheet.name || sheet.fileName}
-        </p>
-        <p className="truncate text-[10px] text-slate-500">
-          {sheet.status === 'error'
-            ? sheet.error
-            : sheet.status === 'done'
-              ? `${sheet.answers.filter(Boolean).length} butir terbaca`
-              : sheet.fileName}
+
+      <div className="space-y-1.5 px-2.5 py-2">
+        <input
+          value={sheet.name}
+          onChange={(event) => onRename(sheet.id, event.target.value.toUpperCase())}
+          placeholder="NAMA PESERTA"
+          className="w-full rounded border border-slate-200 px-1.5 py-1 text-xs font-semibold uppercase text-slate-800 focus:border-indigo-400 focus:outline-none"
+        />
+        {metrics.pageCount > 1 ? (
+          <select
+            value={sheet.pageIndex || 0}
+            onChange={(event) => onPageIndex(sheet.id, Number(event.target.value))}
+            className="w-full rounded border border-slate-200 px-1.5 py-1 text-[11px] text-slate-600 focus:border-indigo-400 focus:outline-none"
+          >
+            {Array.from({ length: metrics.pageCount }, (_, page) => (
+              <option key={page} value={page}>
+                Halaman {page + 1}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        <p className="truncate text-[10px] text-slate-500" title={sheet.error || sheet.fileName}>
+          {sheet.status === 'error' ? sheet.error : `${marked} butir terbaca — ${sheet.fileName}`}
         </p>
       </div>
     </div>
   );
 }
 
-function ScanPanel({ sheets, config, apiKeyReady, processing, progress, onAdd, onRemove, onClearAll, onProcess, onStop, onInspect }) {
+/** Entri manual: jalur cadangan ketika citra gagal dibaca atau kamera tidak dipakai. */
+function ManualEntryCard({ layout, onSubmit }) {
+  const [name, setName] = useState('');
+  const [answers, setAnswers] = useState(() => new Array(layout.numQuestions).fill(null));
+  const [bulk, setBulk] = useState('');
+  const options = layout.optionSet.split('');
+
+  useEffect(() => {
+    setAnswers((prev) =>
+      prev.length === layout.numQuestions
+        ? prev
+        : Array.from({ length: layout.numQuestions }, (_, index) => prev[index] ?? null),
+    );
+  }, [layout.numQuestions]);
+
+  const filled = answers.filter(Boolean).length;
+
+  const submit = () => {
+    if (!name.trim()) return;
+    onSubmit(name.trim().toUpperCase(), answers);
+    setName('');
+    setAnswers(new Array(layout.numQuestions).fill(null));
+    setBulk('');
+  };
+
+  return (
+    <Card
+      title="Entri Manual"
+      description="Ketik pola jawaban langsung bila lembar tidak terbaca kamera atau koreksi dilakukan tanpa pemindaian."
+      icon={Keyboard}
+      actions={
+        <Button icon={Play} onClick={submit} disabled={!name.trim() || !filled}>
+          Tambah Peserta
+        </Button>
+      }
+    >
+      <div className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Nama Peserta">
+            <TextInput
+              value={name}
+              onChange={(event) => setName(event.target.value.toUpperCase())}
+              placeholder="NAMA LENGKAP"
+              className="uppercase"
+            />
+          </Field>
+          <Field label="Tempel Pola Jawaban" hint={`Maksimal ${layout.numQuestions} huruf, tanda - untuk kosong.`}>
+            <div className="flex gap-2">
+              <TextInput
+                value={bulk}
+                onChange={(event) => setBulk(event.target.value)}
+                placeholder="ABCDE-ACB…"
+                className="font-mono uppercase tracking-widest"
+              />
+              <Button
+                variant="secondary"
+                icon={Wand2}
+                onClick={() => setAnswers(parseBulkAnswers(bulk, layout))}
+                disabled={!bulk.trim()}
+              >
+                Isi
+              </Button>
+            </div>
+          </Field>
+        </div>
+
+        <p className="text-xs text-slate-500">
+          {filled}/{layout.numQuestions} butir terisi
+        </p>
+
+        <div className="thin-scroll grid max-h-72 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
+          {answers.map((letter, index) => (
+            <div key={index} className="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-1">
+              <span className="w-7 text-right text-[11px] font-semibold tabular-nums text-slate-500">{index + 1}.</span>
+              <div className="flex flex-1 gap-1">
+                {options.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() =>
+                      setAnswers((prev) => {
+                        const next = prev.slice();
+                        next[index] = next[index] === option ? null : option;
+                        return next;
+                      })
+                    }
+                    className={cx(
+                      'h-7 min-w-[28px] flex-1 rounded text-[11px] font-semibold transition-colors',
+                      letter === option
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white text-slate-400 ring-1 ring-inset ring-slate-200 hover:text-indigo-600',
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Kalibrasi: memperlihatkan titik yang benar-benar disampel detektor di atas
+ * citra asli. Pemeriksa menggeser ambang dan langsung melihat akibatnya,
+ * sehingga keputusan pembacaan dapat diaudit alih-alih dipercaya begitu saja.
+ */
+function CalibrationCard({ sheet, layout, omrOptions, onOmrOptions, onClose, onApply }) {
+  const canvasRef = useRef(null);
+  const [detection, setDetection] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!sheet?.image) return undefined;
+
+    setBusy(true);
+    setError('');
+    (async () => {
+      try {
+        const grayscale = await grayscaleFromSource(sheet.image, omrOptions.maxDim);
+        const result = detectSheet(grayscale, layout, sheet.pageIndex || 0, omrOptions);
+        if (cancelled) return;
+        setDetection(result);
+        if (!result.ok) setError(result.error);
+        await paintDetectionOverlay(canvasRef.current, sheet.image, result, omrOptions);
+      } catch (issue) {
+        if (!cancelled) setError(issue?.message || 'Kalibrasi gagal.');
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sheet?.id, sheet?.image, sheet?.pageIndex, layout, omrOptions]);
+
+  if (!sheet) return null;
+
+  return (
+    <Card
+      title={`Kalibrasi — ${sheet.name || sheet.fileName}`}
+      description="Lingkaran hijau menandai bulatan yang dinilai terisi; kotak biru adalah penanda sudut yang ditemukan."
+      icon={Crosshair}
+      actions={
+        <>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={CheckCircle2}
+            onClick={() => onApply(sheet.id, detection)}
+            disabled={!detection?.ok}
+          >
+            Terapkan ke Lembar Ini
+          </Button>
+          <Button size="sm" variant="ghost" icon={X} onClick={onClose}>
+            Tutup
+          </Button>
+        </>
+      }
+    >
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="thin-scroll overflow-auto rounded-xl border border-slate-200 bg-slate-100 p-2">
+          <canvas ref={canvasRef} className="mx-auto block max-w-full" />
+        </div>
+
+        <div className="space-y-3">
+          {busy ? (
+            <p className="inline-flex items-center gap-2 text-xs text-slate-500">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Membaca ulang lembar…
+            </p>
+          ) : null}
+
+          {error ? <Banner tone="error" icon={AlertTriangle}>{error}</Banner> : null}
+
+          {detection?.ok ? (
+            <dl className="space-y-1.5 text-xs">
+              {[
+                ['Butir terbaca', `${detection.marked}/${detection.total}`],
+                ['Garis dasar lembar', fmt(detection.baseline, 3)],
+                ['Ambang Otsu', Math.round(detection.threshold)],
+                ['Tidak terbaca', detection.flags.length],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                  <dt className="text-slate-500">{label}</dt>
+                  <dd className="font-semibold tabular-nums text-slate-800">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+
+          <Field
+            label={`Ambang kehitaman neto — ${omrOptions.fillThreshold.toFixed(2)}`}
+            hint="Seberapa jauh sebuah bulatan harus lebih gelap dari garis dasar lembar untuk dianggap ditandai."
+          >
+            <input
+              type="range"
+              min="0.05"
+              max="0.6"
+              step="0.01"
+              value={omrOptions.fillThreshold}
+              onChange={(event) => onOmrOptions({ ...omrOptions, fillThreshold: Number(event.target.value) })}
+              className="w-full accent-indigo-600"
+            />
+          </Field>
+
+          <Field
+            label={`Selisih minimum antaropsi — ${omrOptions.marginThreshold.toFixed(2)}`}
+            hint="Menjaga jawaban ganda atau ragu tetap dihitung sebagai tidak dijawab."
+          >
+            <input
+              type="range"
+              min="0.02"
+              max="0.4"
+              step="0.01"
+              value={omrOptions.marginThreshold}
+              onChange={(event) => onOmrOptions({ ...omrOptions, marginThreshold: Number(event.target.value) })}
+              className="w-full accent-indigo-600"
+            />
+          </Field>
+
+          <Field
+            label={`Radius sampel — ${omrOptions.sampleRadiusFactor.toFixed(2)} × diameter`}
+            hint="Perkecil bila cincin bulatan ikut tersampel, perbesar bila penandaan meleset dari pusat."
+          >
+            <input
+              type="range"
+              min="0.2"
+              max="0.45"
+              step="0.01"
+              value={omrOptions.sampleRadiusFactor}
+              onChange={(event) => onOmrOptions({ ...omrOptions, sampleRadiusFactor: Number(event.target.value) })}
+              className="w-full accent-indigo-600"
+            />
+          </Field>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Eraser}
+            onClick={() => onOmrOptions({ ...DEFAULT_OMR_OPTIONS })}
+          >
+            Kembalikan ke bawaan
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ScanPanel({
+  sheets,
+  layout,
+  metrics,
+  omrOptions,
+  onOmrOptions,
+  processing,
+  progress,
+  calibrationId,
+  onCalibrate,
+  onApplyCalibration,
+  onAdd,
+  onCapture,
+  onRemove,
+  onClearAll,
+  onProcess,
+  onInspect,
+  onRename,
+  onPageIndex,
+  onManualAdd,
+}) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef(null);
+  const native = isNativeAndroid();
 
   const handleFiles = (fileList) => {
     const files = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
@@ -1482,13 +1706,14 @@ function ScanPanel({ sheets, config, apiKeyReady, processing, progress, onAdd, o
   };
 
   const pending = sheets.filter((sheet) => sheet.status === 'pending' || sheet.status === 'error').length;
+  const calibrationSheet = sheets.find((sheet) => sheet.id === calibrationId) || null;
 
   return (
     <div className="space-y-4">
-      {!apiKeyReady ? (
-        <Banner tone="warn" icon={KeyRound} title="API key Gemini belum diisi">
-          Buka panel Konfigurasi dan masukkan kunci API Anda. Tanpa kunci tersebut, pemindaian tidak dapat dijalankan
-          karena seluruh proses pembacaan citra terjadi langsung dari peramban ke layanan Gemini.
+      {!metrics.printable ? (
+        <Banner tone="warn" icon={AlertTriangle} title="Layout belum layak cetak">
+          Perbaiki konfigurasi pada panel Layout LJK sebelum memindai. Selama geometri tidak sah, titik sampel detektor
+          tidak akan jatuh di atas bulatan yang tercetak.
         </Banner>
       ) : null}
 
@@ -1522,15 +1747,20 @@ function ScanPanel({ sheets, config, apiKeyReady, processing, progress, onAdd, o
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
           <Upload className="h-6 w-6" />
         </span>
-        <p className="mt-3 text-sm font-semibold text-slate-800">Unggah foto atau hasil pindai LJK</p>
+        <p className="mt-3 text-sm font-semibold text-slate-800">Ambil atau unggah citra LJK</p>
         <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-500">
-          Beberapa berkas sekaligus diperbolehkan. Pastikan lembar terpotret utuh, tegak lurus, dan pencahayaan merata —
-          tiga faktor yang paling menentukan akurasi pembacaan penanda.
+          Pastikan keempat kotak hitam di sudut lembar ikut terpotret dan tidak terpotong. Kotak itulah acuan yang
+          dipakai untuk meluruskan grid, sehingga foto miring pun tetap terbaca.
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <Button icon={ImageIcon} onClick={() => inputRef.current?.click()}>
             Pilih Berkas
           </Button>
+          {native ? (
+            <Button variant="secondary" icon={Camera} onClick={onCapture}>
+              Potret dengan Kamera
+            </Button>
+          ) : null}
           {sheets.length ? (
             <Button variant="secondary" icon={Trash2} onClick={onClearAll}>
               Bersihkan Semua
@@ -1539,30 +1769,37 @@ function ScanPanel({ sheets, config, apiKeyReady, processing, progress, onAdd, o
         </div>
       </div>
 
+      {calibrationSheet ? (
+        <CalibrationCard
+          sheet={calibrationSheet}
+          layout={layout}
+          omrOptions={omrOptions}
+          onOmrOptions={onOmrOptions}
+          onClose={() => onCalibrate(null)}
+          onApply={onApplyCalibration}
+        />
+      ) : null}
+
       {sheets.length ? (
         <Card
-          title={`Antrean Pemindaian — ${sheets.length} lembar`}
-          description={`Model aktif: ${config.model} — ${config.numQuestions} butir, opsi ${config.optionSet.split('').join('/')}`}
+          title={`Antrean Pembacaan — ${sheets.length} lembar`}
+          description={`${layout.numQuestions} butir, opsi ${layout.optionSet.split('').join('/')}, ${metrics.pageCount} halaman per peserta`}
           icon={Layers}
           actions={
-            processing ? (
-              <Button variant="danger" icon={X} onClick={onStop}>
-                Hentikan
-              </Button>
-            ) : (
-              <Button icon={Play} onClick={onProcess} disabled={!apiKeyReady || !pending}>
-                Proses {pending ? `${pending} Lembar` : 'Antrean'}
-              </Button>
-            )
+            <Button icon={processing ? Loader2 : Play} onClick={onProcess} disabled={processing || !pending}>
+              {processing ? 'Membaca…' : `Baca ${pending ? `${pending} Lembar` : 'Antrean'}`}
+            </Button>
           }
         >
           {processing ? (
             <div className="mb-4">
               <div className="mb-1.5 flex items-center justify-between text-xs text-slate-600">
                 <span className="inline-flex items-center gap-1.5">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Membaca lembar {progress.current} dari {progress.total}
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Lembar {progress.current} dari {progress.total}
                 </span>
-                <span className="tabular-nums">{Math.round((progress.current / Math.max(1, progress.total)) * 100)}%</span>
+                <span className="tabular-nums">
+                  {Math.round((progress.current / Math.max(1, progress.total)) * 100)}%
+                </span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                 <div
@@ -1575,16 +1812,26 @@ function ScanPanel({ sheets, config, apiKeyReady, processing, progress, onAdd, o
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
             {sheets.map((sheet) => (
-              <SheetCard key={sheet.id} sheet={sheet} onRemove={onRemove} onInspect={onInspect} />
+              <SheetCard
+                key={sheet.id}
+                sheet={sheet}
+                metrics={metrics}
+                onRemove={onRemove}
+                onInspect={onInspect}
+                onRename={onRename}
+                onPageIndex={onPageIndex}
+                onCalibrate={onCalibrate}
+              />
             ))}
           </div>
         </Card>
       ) : (
         <EmptyState icon={ScanLine} title="Belum ada lembar jawaban">
-          Unggah berkas citra LJK untuk memulai. Sistem akan mengekstraksi nama peserta dan pola jawaban, kemudian
-          mencocokkannya dengan kunci yang telah Anda tetapkan.
+          Unggah citra LJK untuk dibaca mesin OMR luring, atau masukkan pola jawaban lewat entri manual di bawah.
         </EmptyState>
       )}
+
+      <ManualEntryCard layout={layout} onSubmit={onManualAdd} />
     </div>
   );
 }
@@ -2084,60 +2331,16 @@ function AnalysisPanel({ rows, itemStats, sample, basis, config }) {
  * 14. PANEL KONFIGURASI
  * ------------------------------------------------------------------ */
 
-function ConfigPanel({ config, onConfig, apiKey, onApiKey, logo, onLogo }) {
-  const [revealKey, setRevealKey] = useState(false);
+function ConfigPanel({ config, onConfig, logo, onLogo }) {
   const set = (patch) => onConfig({ ...config, ...patch });
 
   return (
     <div className="space-y-4">
-      <Card
-        title="Kredensial Gemini API"
-        description="Kunci disimpan pada localStorage peramban ini dan dikirim langsung ke Google tanpa perantara server."
-        icon={KeyRound}
-      >
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Field
-            label="API Key"
-            hint="Dapatkan melalui Google AI Studio. Kunci bersifat rahasia — hindari memakai perangkat publik."
-          >
-            <div className="relative">
-              <TextInput
-                type={revealKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(event) => onApiKey(event.target.value.trim())}
-                placeholder="AIza…"
-                autoComplete="off"
-                className="pr-20 font-mono"
-              />
-              <button
-                type="button"
-                onClick={() => setRevealKey((prev) => !prev)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100"
-              >
-                {revealKey ? 'Sembunyikan' : 'Tampilkan'}
-              </button>
-            </div>
-          </Field>
-
-          <Field label="Model Visi" hint="Model flash memadai untuk LJK bersih; gunakan pro pada lembar hasil foto ponsel yang buram.">
-            <SelectInput value={config.model} onChange={(event) => set({ model: event.target.value })}>
-              {GEMINI_MODELS.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.label}
-                </option>
-              ))}
-            </SelectInput>
-          </Field>
-        </div>
-
-        <div className="mt-4">
-          <Banner tone="warn" icon={Lock} title="Konsekuensi arsitektur tanpa backend">
-            Aplikasi ini berjalan sepenuhnya di sisi klien, sehingga kunci API berada di peramban pengguna. Untuk
-            pemakaian institusional dengan banyak operator, tempatkan kunci pada proksi server dan batasi kuotanya per
-            pemakai.
-          </Banner>
-        </div>
-      </Card>
+      <Banner tone="success" icon={WifiOff} title="Aplikasi berjalan luring penuh">
+        Tidak ada kunci API, tidak ada panggilan jaringan, dan tidak ada data peserta yang meninggalkan perangkat.
+        Pembacaan lembar dikerjakan mesin OMR di dalam peramban, sehingga koreksi tetap berjalan di ruang ujian tanpa
+        sinyal sekalipun.
+      </Banner>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Identitas Institusi" description="Digunakan pada kop laporan dan template LJK." icon={Building2}>
@@ -2151,7 +2354,7 @@ function ConfigPanel({ config, onConfig, apiKey, onApiKey, logo, onLogo }) {
             <Field label="Alamat">
               <TextInput value={config.address} onChange={(event) => set({ address: event.target.value })} />
             </Field>
-            <Field label="Logo (opsional)" hint="Format PNG/JPG. Logo hanya tersimpan pada sesi peramban ini.">
+            <Field label="Logo (opsional)" hint="Format PNG/JPG, dibaca dari berkas lokal dan disimpan di perangkat.">
               <div className="flex items-center gap-3">
                 {logo ? <img src={logo} alt="" className="h-12 w-12 rounded border border-slate-200 object-contain" /> : null}
                 <input
@@ -2174,7 +2377,7 @@ function ConfigPanel({ config, onConfig, apiKey, onApiKey, logo, onLogo }) {
           </div>
         </Card>
 
-        <Card title="Parameter Instrumen" description="Struktur tes yang akan dikoreksi." icon={Settings2}>
+        <Card title="Identitas Instrumen" description="Keterangan administrasi yang tercetak pada laporan." icon={Settings2}>
           <div className="space-y-3">
             <Field label="Nama Tes">
               <TextInput value={config.testName} onChange={(event) => set({ testName: event.target.value })} />
@@ -2196,32 +2399,17 @@ function ConfigPanel({ config, onConfig, apiKey, onApiKey, logo, onLogo }) {
                 <TextInput type="date" value={config.testDate} onChange={(event) => set({ testDate: event.target.value })} />
               </Field>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Jumlah Butir" hint="Rentang 1–200 butir.">
-                <TextInput
-                  type="number"
-                  min={1}
-                  max={200}
-                  value={config.numQuestions}
-                  onChange={(event) => set({ numQuestions: clamp(Number(event.target.value) || 1, 1, 200) })}
-                />
-              </Field>
-              <Field label="Opsi Jawaban">
-                <SelectInput value={config.optionSet} onChange={(event) => set({ optionSet: event.target.value })}>
-                  {OPTION_PRESETS.map((preset) => (
-                    <option key={preset} value={preset}>
-                      {preset.split('').join(' / ')}
-                    </option>
-                  ))}
-                </SelectInput>
-              </Field>
-            </div>
             <Field label="Nama Pemeriksa">
               <TextInput
                 value={config.examiner}
                 onChange={(event) => set({ examiner: event.target.value })}
                 placeholder="Nama lengkap dan gelar"
               />
+            </Field>
+            <Field label="Jumlah butir dan opsi jawaban" hint="Diatur bersama geometri lembar pada panel Layout LJK.">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                Lihat panel Layout LJK
+              </div>
             </Field>
           </div>
         </Card>
@@ -2260,6 +2448,12 @@ function ConfigPanel({ config, onConfig, apiKey, onApiKey, logo, onLogo }) {
               onChange={(value) => set({ showDetailPages: value })}
               label="Sertakan lampiran rincian jawaban per peserta"
               hint="Menambah halaman pada laporan PDF berisi pola jawaban tiap peserta."
+            />
+            <Toggle
+              checked={config.mergeByName}
+              onChange={(value) => set({ mergeByName: value })}
+              label="Gabungkan lembar dengan nama sama"
+              hint="Diperlukan bila satu peserta mengisi lebih dari satu halaman LJK. Jawaban dari tiap halaman disatukan menjadi satu baris nilai."
             />
           </div>
         </Card>
@@ -2306,11 +2500,103 @@ function ConfigPanel({ config, onConfig, apiKey, onApiKey, logo, onLogo }) {
 }
 
 /* ------------------------------------------------------------------ *
+ * 14b. PANEL LAYOUT LJK
+ * ------------------------------------------------------------------ */
+
+const LAYOUT_FIELDS = [
+  { key: 'numQuestions', label: 'Jumlah Butir', step: 1, unit: '', hint: 'Jumlah soal pada instrumen.' },
+  { key: 'columns', label: 'Jumlah Kolom', step: 1, unit: '', hint: 'Kolom bulatan per halaman.' },
+  { key: 'rowsPerColumn', label: 'Baris per Kolom', step: 1, unit: '', hint: 'Kapasitas satu kolom.' },
+  { key: 'bubbleDiameterMm', label: 'Diameter Bulatan', step: 0.1, unit: 'mm', hint: 'Bulatan lebih besar lebih mudah dibaca kamera.' },
+  { key: 'bubbleGapMm', label: 'Jarak Antarbulatan', step: 0.1, unit: 'mm', hint: 'Celah mendatar antaropsi.' },
+  { key: 'rowPitchMm', label: 'Jarak Antarbaris', step: 0.1, unit: 'mm', hint: 'Jarak tegak antarbutir.' },
+  { key: 'columnGapMm', label: 'Jarak Antarkolom', step: 0.5, unit: 'mm', hint: 'Celah antarkolom butir.' },
+  { key: 'numberGutterMm', label: 'Lebar Kolom Nomor', step: 0.5, unit: 'mm', hint: 'Ruang untuk nomor butir.' },
+  { key: 'gridTopMm', label: 'Awal Grid dari Atas', step: 1, unit: 'mm', hint: 'Menentukan tinggi area kop dan identitas.' },
+  { key: 'marginMm', label: 'Margin Halaman', step: 1, unit: 'mm', hint: 'Batas cetak sisi halaman.' },
+  { key: 'footerMm', label: 'Tinggi Kaki Halaman', step: 1, unit: 'mm', hint: 'Ruang paraf pengawas.' },
+  { key: 'fiducialSizeMm', label: 'Ukuran Penanda Sudut', step: 0.5, unit: 'mm', hint: 'Kotak hitam acuan pemindai.' },
+  { key: 'fiducialInsetMm', label: 'Jarak Penanda dari Tepi', step: 0.5, unit: 'mm', hint: 'Semakin ke tepi, semakin mudah dikenali.' },
+];
+
+function LayoutPanel({ layout, metrics, onLayout, onReset }) {
+  const set = (patch) => onLayout(normalizeLayout({ ...layout, ...patch }));
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard icon={Grid3x3} label="Kapasitas Halaman" value={metrics.perPage} sub={`${metrics.layout.columns} kolom × ${metrics.layout.rowsPerColumn} baris`} />
+        <StatCard icon={Layers} label="Jumlah Halaman" value={metrics.pageCount} sub={`${metrics.layout.numQuestions} butir`} tone="emerald" />
+        <StatCard icon={Ruler} label="Baris Maksimum" value={metrics.maxRows} sub="pada tinggi halaman saat ini" tone="amber" />
+        <StatCard
+          icon={metrics.printable ? CheckCircle2 : AlertTriangle}
+          label="Status Geometri"
+          value={metrics.printable ? 'Layak' : 'Perbaiki'}
+          sub={`kolom ${metrics.columnWidthMm.toFixed(1)} mm / butuh ${metrics.requiredColumnMm.toFixed(1)} mm`}
+          tone={metrics.printable ? 'slate' : 'rose'}
+        />
+      </div>
+
+      {metrics.issues.length ? (
+        <Banner tone={metrics.printable ? 'info' : 'warn'} icon={AlertTriangle} title="Catatan atas layout">
+          <ul className="list-disc space-y-0.5 pl-4">
+            {metrics.issues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        </Banner>
+      ) : null}
+
+      <Card
+        title="Geometri Lembar Jawaban"
+        description="Nilai di bawah ini menjadi acuan tunggal: template dicetak dari angka yang sama dengan yang dibaca mesin OMR."
+        icon={Ruler}
+        actions={
+          <Button size="sm" variant="secondary" icon={Eraser} onClick={onReset}>
+            Kembalikan Bawaan
+          </Button>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Opsi Jawaban" hint="Jumlah pilihan per butir.">
+            <SelectInput value={layout.optionSet} onChange={(event) => set({ optionSet: event.target.value })}>
+              <option value="ABCD">A / B / C / D</option>
+              <option value="ABCDE">A / B / C / D / E</option>
+            </SelectInput>
+          </Field>
+
+          {LAYOUT_FIELDS.map((field) => {
+            const bounds = LAYOUT_BOUNDS[field.key];
+            return (
+              <Field
+                key={field.key}
+                label={field.unit ? `${field.label} (${field.unit})` : field.label}
+                hint={`${field.hint} Rentang ${bounds[0]}–${bounds[1]}.`}
+              >
+                <TextInput
+                  type="number"
+                  step={field.step}
+                  min={bounds[0]}
+                  max={bounds[1]}
+                  value={layout[field.key]}
+                  onChange={(event) => set({ [field.key]: Number(event.target.value) })}
+                />
+              </Field>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * 15. KOMPONEN AKAR
  * ------------------------------------------------------------------ */
 
 const TABS = [
   { id: 'konfigurasi', label: 'Konfigurasi', icon: Settings2 },
+  { id: 'layout', label: 'Layout LJK', icon: Ruler },
   { id: 'kunci', label: 'Kunci Jawaban', icon: KeyRound },
   { id: 'pindai', label: 'Pindai LJK', icon: ScanLine },
   { id: 'hasil', label: 'Hasil & Nilai', icon: Table2 },
@@ -2331,29 +2617,27 @@ export default function App() {
   const persisted = useMemo(loadPersisted, []);
 
   const [config, setConfig] = useState(() => ({ ...DEFAULT_CONFIG, ...(persisted?.config || {}) }));
-  const [apiKey, setApiKey] = useState(() => {
-    try {
-      return localStorage.getItem(API_KEY_STORAGE) || '';
-    } catch (error) {
-      return '';
-    }
-  });
+  const [layout, setLayout] = useState(() => normalizeLayout(persisted?.layout || DEFAULT_LAYOUT));
+  const [omrOptions, setOmrOptions] = useState(() => ({
+    ...DEFAULT_OMR_OPTIONS,
+    ...(persisted?.omrOptions || {}),
+  }));
   const [answerKey, setAnswerKey] = useState(() => {
-    const size = persisted?.config?.numQuestions || DEFAULT_CONFIG.numQuestions;
+    const size = normalizeLayout(persisted?.layout || DEFAULT_LAYOUT).numQuestions;
     const stored = persisted?.answerKey || [];
     return Array.from({ length: size }, (_, index) => stored[index] || '');
   });
   const [sheets, setSheets] = useState(() => persisted?.sheets || []);
   const [logo, setLogo] = useState(() => persisted?.logo || '');
+
   const [tab, setTab] = useState('konfigurasi');
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [inspectId, setInspectId] = useState(null);
+  const [calibrationId, setCalibrationId] = useState(null);
   const [busyExport, setBusyExport] = useState('');
   const [toast, setToast] = useState(null);
-  const [rowsPerColumn, setRowsPerColumn] = useState(20);
 
-  const abortRef = useRef(null);
   const reportRef = useRef(null);
   const templateRef = useRef(null);
 
@@ -2370,16 +2654,10 @@ export default function App() {
 
   /* ---- Persistensi ---- */
   useEffect(() => {
-    try {
-      localStorage.setItem(API_KEY_STORAGE, apiKey);
-    } catch (error) {
-      /* penyimpanan tidak tersedia */
-    }
-  }, [apiKey]);
-
-  useEffect(() => {
     const payload = {
       config,
+      layout,
+      omrOptions,
       answerKey,
       logo,
       sheets: sheets.map(({ image, ...rest }) => rest),
@@ -2396,37 +2674,61 @@ export default function App() {
         /* kuota penyimpanan habis; sesi tetap berjalan di memori */
       }
     }
-  }, [config, answerKey, logo, sheets]);
+  }, [config, layout, omrOptions, answerKey, logo, sheets]);
+
+  /* ---- Geometri dan konfigurasi turunan ---- */
+  const metrics = useMemo(() => computeLayoutMetrics(layout), [layout]);
+  const scoringConfig = useMemo(
+    () => ({ ...config, numQuestions: layout.numQuestions, optionSet: layout.optionSet }),
+    [config, layout.numQuestions, layout.optionSet],
+  );
 
   /* ---- Sinkronisasi panjang larik ketika jumlah butir berubah ---- */
   useEffect(() => {
     setAnswerKey((prev) =>
-      prev.length === config.numQuestions
+      prev.length === layout.numQuestions
         ? prev
-        : Array.from({ length: config.numQuestions }, (_, index) => prev[index] || ''),
+        : Array.from({ length: layout.numQuestions }, (_, index) => prev[index] || ''),
     );
     setSheets((prev) =>
       prev.map((sheet) =>
-        sheet.answers && sheet.answers.length !== config.numQuestions
+        sheet.answers && sheet.answers.length !== layout.numQuestions
           ? {
               ...sheet,
-              answers: Array.from({ length: config.numQuestions }, (_, index) => sheet.answers[index] ?? null),
+              answers: Array.from({ length: layout.numQuestions }, (_, index) => sheet.answers[index] ?? null),
             }
           : sheet,
       ),
     );
-  }, [config.numQuestions]);
+  }, [layout.numQuestions]);
 
   /* ---- Turunan psikometrik ---- */
-  const graded = useMemo(
-    () => sheets.filter((sheet) => sheet.status === 'done').map((sheet) => gradeSheet(sheet, answerKey, config)),
-    [sheets, answerKey, config],
-  );
-  const { rows, sample, basis } = useMemo(() => applyNorms(graded, config), [graded, config]);
-  const itemStats = useMemo(() => analyzeItems(rows, answerKey, config), [rows, answerKey, config]);
+  const graded = useMemo(() => {
+    const finished = sheets.filter((sheet) => sheet.status === 'done');
+
+    let units = finished.map((sheet) => ({ ...sheet, sheetCount: 1 }));
+    if (config.mergeByName) {
+      const merged = new Map();
+      units.forEach((unit) => {
+        const key = (unit.name || '').trim().toUpperCase() || unit.id;
+        const existing = merged.get(key);
+        if (!existing) {
+          merged.set(key, { ...unit, answers: unit.answers.slice() });
+          return;
+        }
+        existing.answers = existing.answers.map((letter, index) => letter ?? unit.answers[index] ?? null);
+        existing.sheetCount += 1;
+      });
+      units = [...merged.values()];
+    }
+
+    return units.map((unit) => gradeSheet(unit, answerKey, scoringConfig));
+  }, [sheets, answerKey, scoringConfig, config.mergeByName]);
+
+  const { rows, sample, basis } = useMemo(() => applyNorms(graded, scoringConfig), [graded, scoringConfig]);
+  const itemStats = useMemo(() => analyzeItems(rows, answerKey, scoringConfig), [rows, answerKey, scoringConfig]);
 
   const inspected = useMemo(() => rows.find((row) => row.id === inspectId) || null, [rows, inspectId]);
-  const apiKeyReady = apiKey.trim().length > 10;
   const keyFilled = answerKey.filter(Boolean).length;
 
   /* ---- Manipulasi lembar ---- */
@@ -2434,22 +2736,28 @@ export default function App() {
     setSheets((prev) => prev.map((sheet) => (sheet.id === id ? { ...sheet, ...patch } : sheet)));
   }, []);
 
+  const makeSheet = useCallback(
+    (fileName, image) => ({
+      id: uid(),
+      fileName,
+      name: fileName.replace(/\.[^.]+$/, '').toUpperCase(),
+      image: image?.full || '',
+      thumb: image?.thumb || '',
+      status: 'pending',
+      source: 'omr',
+      pageIndex: 0,
+      error: null,
+      answers: new Array(layout.numQuestions).fill(null),
+    }),
+    [layout.numQuestions],
+  );
+
   const handleAddFiles = useCallback(
     async (files) => {
       const prepared = await Promise.all(
         files.map(async (file) => {
           try {
-            const image = await prepareImage(file);
-            return {
-              id: uid(),
-              fileName: file.name,
-              name: file.name.replace(/\.[^.]+$/, '').toUpperCase(),
-              image: image.full,
-              thumb: image.thumb,
-              status: 'pending',
-              error: null,
-              answers: new Array(config.numQuestions).fill(null),
-            };
+            return makeSheet(file.name, await prepareImage(file));
           } catch (error) {
             return null;
           }
@@ -2459,89 +2767,101 @@ export default function App() {
       setSheets((prev) => [...prev, ...valid]);
       if (valid.length) notify(`${valid.length} lembar ditambahkan ke antrean.`, 'success');
     },
-    [config.numQuestions, notify],
+    [makeSheet, notify],
   );
+
+  const handleCapture = useCallback(async () => {
+    try {
+      const dataUrl = await capturePhoto();
+      if (!dataUrl) return;
+      const image = await prepareImageFromDataUrl(dataUrl);
+      setSheets((prev) => [...prev, makeSheet(`kamera-${prev.length + 1}.jpg`, image)]);
+      notify('Citra dari kamera ditambahkan.', 'success');
+    } catch (error) {
+      notify(error?.message || 'Pengambilan citra dibatalkan.', 'warn');
+    }
+  }, [makeSheet, notify]);
 
   const handleProcess = useCallback(async () => {
     const targets = sheets.filter((sheet) => sheet.status === 'pending' || sheet.status === 'error');
     if (!targets.length) return;
-    if (!apiKeyReady) {
-      notify('API key Gemini belum diisi.', 'error');
-      return;
-    }
 
-    const controller = new AbortController();
-    abortRef.current = controller;
     setProcessing(true);
     setProgress({ current: 0, total: targets.length });
 
-    const prompt = buildVisionPrompt(config.numQuestions, config.optionSet);
     let success = 0;
     let failure = 0;
 
     for (let index = 0; index < targets.length; index += 1) {
-      if (controller.signal.aborted) break;
       const target = targets[index];
       setProgress({ current: index + 1, total: targets.length });
       updateSheet(target.id, { status: 'processing', error: null });
-
-      if (!target.image) {
-        updateSheet(target.id, {
-          status: 'error',
-          error: 'Citra tidak tersedia pada sesi ini. Unggah ulang berkasnya.',
-        });
-        failure += 1;
-        continue;
-      }
+      await sleep(0); // memberi kesempatan antarmuka memperbarui bilah kemajuan
 
       try {
-        const text = await requestGeminiWithRetry({
-          apiKey: apiKey.trim(),
-          model: config.model,
-          prompt,
-          base64: stripBase64(target.image),
-          mimeType: 'image/jpeg',
-          signal: controller.signal,
-        });
-        const parsed = extractJsonObject(text);
-        const result = normalizeVisionResult(parsed, config.numQuestions, config.optionSet);
+        const detection = await readSheetOffline(target, layout, omrOptions);
         updateSheet(target.id, {
           status: 'done',
-          name: result.name,
-          answers: result.answers,
+          source: 'omr',
+          answers: answersFromDetection(detection, layout, target.answers),
+          confidence: detection.confidence,
+          baseline: detection.baseline,
           error: null,
           scannedAt: Date.now(),
         });
         success += 1;
       } catch (error) {
-        if (controller.signal.aborted) {
-          updateSheet(target.id, { status: 'pending' });
-          break;
-        }
-        updateSheet(target.id, {
-          status: 'error',
-          error: error?.message || 'Lembar gagal dibaca.',
-        });
+        updateSheet(target.id, { status: 'error', error: error?.message || 'Lembar gagal dibaca.' });
         failure += 1;
       }
     }
 
     setProcessing(false);
-    abortRef.current = null;
-    if (!controller.signal.aborted) {
-      notify(
-        `Pemindaian selesai: ${success} berhasil${failure ? `, ${failure} gagal` : ''}.`,
-        failure ? 'warn' : 'success',
-      );
-      if (success) setTab('hasil');
-    }
-  }, [sheets, apiKey, apiKeyReady, config, updateSheet, notify]);
+    notify(
+      `Pembacaan selesai: ${success} berhasil${failure ? `, ${failure} gagal` : ''}.`,
+      failure ? 'warn' : 'success',
+    );
+    if (success) setTab('hasil');
+  }, [sheets, layout, omrOptions, updateSheet, notify]);
 
-  const handleStop = useCallback(() => {
-    abortRef.current?.abort();
-    setProcessing(false);
-    notify('Pemrosesan dihentikan.', 'warn');
-  }, [notify]);
+  const handleApplyCalibration = useCallback(
+    (id, detection) => {
+      if (!detection?.ok) return;
+      const target = sheets.find((sheet) => sheet.id === id);
+      updateSheet(id, {
+        status: 'done',
+        source: 'omr',
+        answers: answersFromDetection(detection, layout, target?.answers),
+        confidence: detection.confidence,
+        baseline: detection.baseline,
+        error: null,
+      });
+      notify('Hasil kalibrasi diterapkan pada lembar ini.', 'success');
+    },
+    [sheets, layout, updateSheet, notify],
+  );
+
+  const handleManualAdd = useCallback(
+    (name, answers) => {
+      setSheets((prev) => [
+        ...prev,
+        {
+          id: uid(),
+          fileName: 'entri manual',
+          name,
+          image: '',
+          thumb: '',
+          status: 'done',
+          source: 'manual',
+          pageIndex: 0,
+          error: null,
+          answers: answers.slice(),
+        },
+      ]);
+      notify(`${name} ditambahkan lewat entri manual.`, 'success');
+    },
+    [notify],
+  );
 
   const handleEditAnswer = useCallback((id, index, letter) => {
     setSheets((prev) =>
@@ -2555,9 +2875,13 @@ export default function App() {
   }, []);
 
   const handleRename = useCallback((id, name) => updateSheet(id, { name }), [updateSheet]);
+  const handlePageIndex = useCallback((id, pageIndex) => updateSheet(id, { pageIndex }), [updateSheet]);
   const handleRemove = useCallback((id) => setSheets((prev) => prev.filter((sheet) => sheet.id !== id)), []);
 
   /* ---- Ekspor ---- */
+  const describeTarget = (result) =>
+    result?.target === 'android' ? 'Berkas tersimpan di folder Documents.' : 'Berkas berhasil diunduh.';
+
   const handleExportReport = useCallback(async () => {
     if (!rows.length) {
       notify('Belum ada hasil yang dapat dilaporkan.', 'warn');
@@ -2569,12 +2893,12 @@ export default function App() {
         setTab('hasil');
         await sleep(400);
       }
-      await exportElementToPdf(
+      const result = await exportElementToPdf(
         reportRef.current,
         `laporan-${slugify(config.testName)}-${config.testDate}.pdf`,
         'portrait',
       );
-      notify('Laporan PDF berhasil diunduh.', 'success');
+      notify(`Laporan PDF selesai. ${describeTarget(result)}`, 'success');
     } catch (error) {
       notify(error?.message || 'Ekspor PDF gagal.', 'error');
     } finally {
@@ -2589,8 +2913,12 @@ export default function App() {
         setTab('template');
         await sleep(400);
       }
-      await exportElementToPdf(templateRef.current, `template-ljk-${slugify(config.testName)}.pdf`, 'portrait');
-      notify('Template LJK berhasil diunduh.', 'success');
+      const result = await exportElementToPdf(
+        templateRef.current,
+        `template-ljk-${slugify(config.testName)}.pdf`,
+        'portrait',
+      );
+      notify(`Template LJK selesai. ${describeTarget(result)}`, 'success');
     } catch (error) {
       notify(error?.message || 'Ekspor template gagal.', 'error');
     } finally {
@@ -2598,18 +2926,27 @@ export default function App() {
     }
   }, [config.testName, notify]);
 
-  const handleExportCsv = useCallback(() => {
+  const handleExportCsv = useCallback(async () => {
     if (!rows.length) {
       notify('Belum ada hasil untuk diekspor.', 'warn');
       return;
     }
-    downloadCsv(rows, config, `rekap-${slugify(config.testName)}-${config.testDate}.csv`);
-    notify('Rekapitulasi CSV berhasil diunduh.', 'success');
-  }, [rows, config, notify]);
+    try {
+      const result = await exportCsv(
+        rows,
+        scoringConfig,
+        `rekap-${slugify(config.testName)}-${config.testDate}.csv`,
+      );
+      notify(`Rekapitulasi CSV selesai. ${describeTarget(result)}`, 'success');
+    } catch (error) {
+      notify(error?.message || 'Ekspor CSV gagal.', 'error');
+    }
+  }, [rows, scoringConfig, config.testName, config.testDate, notify]);
 
   const handleResetAll = useCallback(() => {
     if (!window.confirm('Hapus seluruh lembar jawaban dan hasil koreksi pada sesi ini?')) return;
     setSheets([]);
+    setCalibrationId(null);
     notify('Data pemindaian dibersihkan.', 'info');
   }, [notify]);
 
@@ -2625,30 +2962,25 @@ export default function App() {
             <div>
               <h1 className="text-base font-bold leading-tight text-slate-900">AI Grader Sistem</h1>
               <p className="text-[11px] leading-tight text-slate-500">
-                Koreksi LJK otomatis untuk instrumen psikologis — Gemini Vision
+                Koreksi LJK luring untuk instrumen psikologis — tanpa jaringan
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+              <WifiOff className="h-3.5 w-3.5" /> Luring
+            </span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
               <Users className="h-3.5 w-3.5" /> {rows.length} peserta
             </span>
             <span
               className={cx(
                 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                keyFilled === config.numQuestions ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800',
+                keyFilled === layout.numQuestions ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800',
               )}
             >
-              <KeyRound className="h-3.5 w-3.5" /> {keyFilled}/{config.numQuestions} kunci
-            </span>
-            <span
-              className={cx(
-                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                apiKeyReady ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700',
-              )}
-            >
-              <Sparkles className="h-3.5 w-3.5" /> {apiKeyReady ? 'API siap' : 'API belum diatur'}
+              <KeyRound className="h-3.5 w-3.5" /> {keyFilled}/{layout.numQuestions} kunci
             </span>
             <Button
               size="sm"
@@ -2673,7 +3005,7 @@ export default function App() {
                 type="button"
                 onClick={() => setTab(entry.id)}
                 className={cx(
-                  'inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
+                  'inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
                   active ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100',
                 )}
               >
@@ -2687,33 +3019,43 @@ export default function App() {
 
       <main className="no-print mx-auto max-w-7xl px-4 py-6 sm:px-6">
         {tab === 'konfigurasi' ? (
-          <ConfigPanel
-            config={config}
-            onConfig={setConfig}
-            apiKey={apiKey}
-            onApiKey={setApiKey}
-            logo={logo}
-            onLogo={setLogo}
+          <ConfigPanel config={config} onConfig={setConfig} logo={logo} onLogo={setLogo} />
+        ) : null}
+
+        {tab === 'layout' ? (
+          <LayoutPanel
+            layout={layout}
+            metrics={metrics}
+            onLayout={setLayout}
+            onReset={() => setLayout(normalizeLayout(DEFAULT_LAYOUT))}
           />
         ) : null}
 
         {tab === 'kunci' ? (
-          <AnswerKeyEditor config={config} answerKey={answerKey} onChange={setAnswerKey} sheets={sheets} />
+          <AnswerKeyEditor config={scoringConfig} answerKey={answerKey} onChange={setAnswerKey} sheets={sheets} />
         ) : null}
 
         {tab === 'pindai' ? (
           <ScanPanel
             sheets={sheets}
-            config={config}
-            apiKeyReady={apiKeyReady}
+            layout={metrics.layout}
+            metrics={metrics}
+            omrOptions={omrOptions}
+            onOmrOptions={setOmrOptions}
             processing={processing}
             progress={progress}
+            calibrationId={calibrationId}
+            onCalibrate={setCalibrationId}
+            onApplyCalibration={handleApplyCalibration}
             onAdd={handleAddFiles}
+            onCapture={handleCapture}
             onRemove={handleRemove}
             onClearAll={handleResetAll}
             onProcess={handleProcess}
-            onStop={handleStop}
             onInspect={setInspectId}
+            onRename={handleRename}
+            onPageIndex={handlePageIndex}
+            onManualAdd={handleManualAdd}
           />
         ) : null}
 
@@ -2721,8 +3063,8 @@ export default function App() {
           <div className="space-y-4">
             {!rows.length ? (
               <EmptyState icon={Table2} title="Belum ada nilai yang dihitung">
-                Setelah lembar jawaban dipindai dan kunci ditetapkan, tabel nilai, statistik kelompok, serta laporan
-                resmi akan tersusun secara otomatis di halaman ini.
+                Setelah lembar jawaban dibaca dan kunci ditetapkan, tabel nilai, statistik kelompok, serta laporan resmi
+                akan tersusun secara otomatis di halaman ini.
               </EmptyState>
             ) : (
               <>
@@ -2745,8 +3087,8 @@ export default function App() {
                   <StatCard
                     icon={AlertTriangle}
                     label="Perlu Verifikasi"
-                    value={rows.filter((row) => row.name === 'TIDAK TERBACA' || row.blank > config.numQuestions / 2).length}
-                    sub="nama/pola jawaban meragukan"
+                    value={rows.filter((row) => row.blank > layout.numQuestions / 2).length}
+                    sub="lebih dari separuh butir kosong"
                     tone="rose"
                   />
                 </div>
@@ -2774,7 +3116,7 @@ export default function App() {
                 >
                   <ResultsTable
                     rows={rows}
-                    config={config}
+                    config={scoringConfig}
                     onRename={handleRename}
                     onInspect={setInspectId}
                     onRemove={handleRemove}
@@ -2794,7 +3136,7 @@ export default function App() {
                   <div className="thin-scroll overflow-x-auto rounded-xl bg-slate-200 p-4">
                     <ReportDocument
                       innerRef={reportRef}
-                      config={config}
+                      config={scoringConfig}
                       rows={rows}
                       sample={sample}
                       basis={basis}
@@ -2809,14 +3151,14 @@ export default function App() {
         ) : null}
 
         {tab === 'analisis' ? (
-          <AnalysisPanel rows={rows} itemStats={itemStats} sample={sample} basis={basis} config={config} />
+          <AnalysisPanel rows={rows} itemStats={itemStats} sample={sample} basis={basis} config={scoringConfig} />
         ) : null}
 
         {tab === 'template' ? (
           <div className="space-y-4">
             <Card
-              title="Template Lembar Jawaban 3 Kolom"
-              description="Lembar siap cetak yang selaras dengan pembacaan otomatis: penomoran mengalir per kolom, penanda sudut sebagai acuan orientasi kamera."
+              title="Template Lembar Jawaban"
+              description="Dirender dari geometri yang sama dengan yang dibaca mesin OMR, sehingga kustomisasi layout tidak pernah membuat pembacaan melenceng."
               icon={Printer}
               actions={
                 <>
@@ -2835,51 +3177,40 @@ export default function App() {
                 </>
               }
             >
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Baris per Kolom" hint="Menentukan berapa butir yang dimuat setiap kolom pada satu halaman.">
-                  <TextInput
-                    type="number"
-                    min={5}
-                    max={40}
-                    value={rowsPerColumn}
-                    onChange={(event) => setRowsPerColumn(clamp(Number(event.target.value) || 20, 5, 40))}
-                  />
-                </Field>
-                <Field label="Jumlah Butir">
-                  <TextInput
-                    type="number"
-                    min={1}
-                    max={200}
-                    value={config.numQuestions}
-                    onChange={(event) =>
-                      setConfig({ ...config, numQuestions: clamp(Number(event.target.value) || 1, 1, 200) })
-                    }
-                  />
-                </Field>
-                <Field label="Kapasitas Halaman">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                    {rowsPerColumn * 3} butir/halaman —{' '}
-                    {Math.max(1, Math.ceil(config.numQuestions / (rowsPerColumn * 3)))} halaman
+              <div className="grid gap-3 sm:grid-cols-4">
+                {[
+                  ['Butir', metrics.layout.numQuestions],
+                  ['Kolom × Baris', `${metrics.layout.columns} × ${metrics.layout.rowsPerColumn}`],
+                  ['Kapasitas Halaman', `${metrics.perPage} butir`],
+                  ['Jumlah Halaman', metrics.pageCount],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+                    <p className="text-sm font-bold text-slate-800">{value}</p>
                   </div>
-                </Field>
+                ))}
               </div>
+              <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                Ubah geometri pada panel Layout LJK. Cetak pada kertas A4 dengan skala 100% — penskalaan otomatis
+                pencetak menggeser posisi bulatan terhadap penanda sudut dan menurunkan akurasi pembacaan.
+              </p>
             </Card>
 
             <div className="thin-scroll overflow-x-auto rounded-xl bg-slate-200 p-4">
-              <AnswerSheetTemplate config={config} rowsPerColumn={rowsPerColumn} innerRef={templateRef} />
+              <AnswerSheetTemplate config={config} layout={metrics.layout} innerRef={templateRef} />
             </div>
           </div>
         ) : null}
       </main>
 
       <footer className="no-print mx-auto max-w-7xl px-4 pb-10 pt-2 text-center text-[11px] leading-relaxed text-slate-400 sm:px-6">
-        AI Grader Sistem — pemrosesan berlangsung sepenuhnya di peramban. Hasil pembacaan otomatis tetap memerlukan
-        verifikasi pemeriksa sebelum digunakan sebagai dasar keputusan asesmen.
+        AI Grader Sistem — seluruh pemrosesan berlangsung di perangkat, tanpa jaringan. Hasil pembacaan otomatis tetap
+        memerlukan verifikasi pemeriksa sebelum digunakan sebagai dasar keputusan asesmen.
       </footer>
 
       <DetailModal
         row={inspected}
-        config={config}
+        config={scoringConfig}
         onClose={() => setInspectId(null)}
         onEditAnswer={handleEditAnswer}
         onRename={handleRename}
@@ -2901,7 +3232,11 @@ export default function App() {
             {toast.tone === 'warn' ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : null}
             {toast.tone === 'info' ? <Info className="mt-0.5 h-4 w-4 shrink-0" /> : null}
             <p className="text-xs leading-relaxed">{toast.message}</p>
-            <button type="button" onClick={() => setToast(null)} className="ml-auto opacity-60 transition-opacity hover:opacity-100">
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="ml-auto opacity-60 transition-opacity hover:opacity-100"
+            >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>

@@ -1,0 +1,15 @@
+{
+  "appId": "id.ac.um.aigrader",
+  "appName": "AI Grader Sistem",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "Camera": {
+      "androidScaleType": "CENTER_CROP"
+    }
+  }
+}
