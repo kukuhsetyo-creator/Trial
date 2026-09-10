@@ -40,7 +40,17 @@ body {
   background: #ffffff;
 }
 
-/* Aturan cetak: hanya area bertanda .print-area yang dikirim ke printer */
+/*
+ * Aturan cetak.
+ *
+ * Menyembunyikan pembungkus dengan .no-print tidak dapat dipakai untuk kerangka
+ * halaman, sebab dokumen yang hendak dicetak bersarang di dalamnya: menyembunyikan
+ * induk berarti menyembunyikan isinya juga, dan tombol Cetak menghasilkan halaman
+ * kosong. Karena itu yang disembunyikan adalah setiap elemen yang bukan leluhur
+ * area cetak, bukan area cetak itu sendiri, dan bukan bagian dalamnya; sementara
+ * seluruh leluhurnya dinetralkan dari bantalan, tepi, dan latar yang hanya
+ * bermakna di layar.
+ */
 @media print {
   @page {
     size: A4 portrait;
@@ -54,22 +64,49 @@ body {
      */
     margin: 0;
   }
+
+  html,
   body {
+    height: auto;
     background: #ffffff;
   }
+
+  body :not(:has(.print-area)):not(.print-area):not(.print-area *) {
+    display: none !important;
+  }
+
+  body :has(.print-area) {
+    display: block !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .print-area,
+  .print-area > * {
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    transform: none !important;
+  }
+
+  /*
+   * Penanda eksplisit bagi kerangka antarmuka yang tidak pernah ikut tercetak.
+   * Aturan di atas sudah menyembunyikannya, tetapi penanda ini menjaga perilaku
+   * tetap benar pada peramban tanpa dukungan :has, sekaligus membuat maksudnya
+   * terbaca langsung pada markah. Kelas ini tidak boleh dipasang pada leluhur
+   * area cetak — di situlah letak kekeliruan yang membuat tombol Cetak semula
+   * menghasilkan halaman kosong.
+   */
   .no-print {
     display: none !important;
   }
-  .print-area {
-    position: absolute !important;
-    inset: 0 auto auto 0 !important;
-    width: 100% !important;
-    min-height: 0 !important;
-    box-shadow: none !important;
-    border: 0 !important;
-    margin: 0 !important;
-    transform: none !important;
-  }
+
   .print-break {
     break-after: page;
     page-break-after: always;

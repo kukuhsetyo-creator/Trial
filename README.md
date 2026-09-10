@@ -127,6 +127,8 @@ terhadap kelompok pembandingnya dan tidak setara dengan skor IQ dari instrumen
 terstandardisasi bernorma nasional. Pembacaan otomatis tetap memerlukan
 verifikasi pemeriksa sebelum hasilnya dipakai sebagai dasar keputusan asesmen.
 
-Cetak template pada kertas A4 dengan skala 100%. Penskalaan otomatis pencetak
-menggeser posisi bulatan terhadap penanda sudut dan menurunkan akurasi
-pembacaan.
+Cetak template pada kertas A4 dengan skala 100%, baik lewat tombol Cetak maupun
+lewat PDF yang diunduh. Penskalaan otomatis pencetak menggeser posisi bulatan
+terhadap penanda sudut dan menurunkan akurasi pembacaan; margin halaman sengaja
+ditetapkan nol karena lembar sudah berukuran A4 penuh dengan bantalan tepinya
+sendiri.
