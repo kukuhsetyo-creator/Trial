@@ -745,6 +745,33 @@ export function detectSheet(grayscale, rawLayout, pageIndex = 0, options = {}) {
     byItem.get(sample.no).push(sample);
   });
 
+  const decision = decideAnswers(byItem, config);
+
+  return {
+    ok: true,
+    samples,
+    byItem,
+    baseline,
+    threshold: global,
+    fiducials,
+    homography,
+    alignment,
+    total: byItem.size,
+    ...decision,
+  };
+}
+
+/**
+ * Keputusan per butir, dipisahkan dari pembacaan citra.
+ *
+ * Pemisahan ini bukan sekadar kerapian: ambang kehitaman dan selisih antaropsi
+ * hanya menyentuh tahap keputusan, sedangkan penurunan resolusi, ambang Otsu,
+ * pencarian penanda, dan homografi tidak terpengaruh sama sekali. Dengan
+ * memisahkannya, panel kalibrasi dapat menggeser ambang dan melihat akibatnya
+ * seketika tanpa membaca ulang citra dari awal.
+ */
+export function decideAnswers(byItem, options = {}) {
+  const config = { ...DEFAULT_OMR_OPTIONS, ...options };
   const answers = new Map();
   const flags = [];
 
@@ -758,25 +785,10 @@ export function detectSheet(grayscale, rawLayout, pageIndex = 0, options = {}) {
       answers.set(no, best.option);
     } else {
       answers.set(no, null);
-      if (best.net >= config.fillThreshold) flags.push({ no, reason: 'ganda' });
-      else flags.push({ no, reason: 'kosong' });
+      flags.push({ no, reason: best.net >= config.fillThreshold ? 'ganda' : 'kosong' });
     }
-    best.chosen = answers.get(no) !== null;
   });
 
   const marked = [...answers.values()].filter(Boolean).length;
-
-  return {
-    ok: true,
-    answers,
-    samples,
-    baseline,
-    threshold: global,
-    fiducials,
-    homography,
-    marked,
-    total: byItem.size,
-    flags,
-    confidence: byItem.size ? marked / byItem.size : 0,
-  };
+  return { answers, flags, marked, confidence: byItem.size ? marked / byItem.size : 0 };
 }

@@ -60,8 +60,16 @@ export async function saveBinaryFile({ filename, blob, dataUrl, mimeType }) {
     anchor.href = href;
     anchor.download = filename;
     anchor.rel = 'noopener';
+
+    // Jangkar harus berada di dalam dokumen agar klik terprogram memicu
+    // unduhan, dan alamat blob baru boleh dicabut setelah peramban sempat
+    // membacanya: mencabutnya pada detak yang sama membatalkan unduhan berkas
+    // besar padahal pemakai sudah menerima pesan berhasil.
+    document.body.appendChild(anchor);
     anchor.click();
-    if (blob) URL.revokeObjectURL(href);
+    anchor.remove();
+    if (blob) setTimeout(() => URL.revokeObjectURL(href), 60_000);
+
     return { target: 'browser', filename };
   }
 

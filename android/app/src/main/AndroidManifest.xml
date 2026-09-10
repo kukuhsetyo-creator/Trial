@@ -49,6 +49,16 @@
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+
+    <!--
+      Ekspor PDF dan CSV ditulis ke folder Documents. Sejak API 30 penulisan itu
+      tidak lagi menuntut izin, tetapi minSdkVersion proyek ini adalah 22: pada
+      perangkat API 22-29 plugin Filesystem menolak menulis bila izin tulis
+      tidak dideklarasikan, sehingga seluruh ekspor gagal.
+    -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <uses-feature

@@ -72,7 +72,7 @@ import {
   computePageItems,
   normalizeLayout,
 } from './ljk/layout.js';
-import { DEFAULT_OMR_OPTIONS, detectSheet, grayscaleFromSource } from './ljk/omr.js';
+import { DEFAULT_OMR_OPTIONS, decideAnswers, detectSheet, grayscaleFromSource } from './ljk/omr.js';
 import { capturePhoto, isNativeAndroid, saveBinaryFile } from './platform.js';
 
 /* ------------------------------------------------------------------ *
@@ -498,17 +498,25 @@ function interpretReliability(kr20) {
  * 5. EKSPOR: PDF (html2canvas + jsPDF) DAN CSV
  * ------------------------------------------------------------------ */
 
-async function exportElementToPdf(element, filename, orientation = 'portrait') {
-  if (!element) throw new Error('Elemen laporan belum siap dirender.');
-
-  const canvas = await html2canvas(element, {
+function renderToCanvas(element) {
+  return html2canvas(element, {
     scale: window.devicePixelRatio > 1 ? 2 : 1.6,
     backgroundColor: '#ffffff',
     useCORS: true,
     logging: false,
     windowWidth: element.scrollWidth,
   });
+}
 
+/**
+ * Laporan adalah satu dokumen menerus, sehingga dipotong menurut tinggi
+ * halaman A4. Template LJK tidak boleh diperlakukan begitu: lihat
+ * exportPagesToPdf di bawah.
+ */
+async function exportElementToPdf(element, filename, orientation = 'portrait') {
+  if (!element) throw new Error('Elemen laporan belum siap dirender.');
+
+  const canvas = await renderToCanvas(element);
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -536,6 +544,48 @@ async function exportElementToPdf(element, filename, orientation = 'portrait') {
     blob: pdf.output('blob'),
     mimeType: 'application/pdf',
   });
+}
+
+/**
+ * Ekspor template LJK: setiap halaman dirender sebagai elemennya sendiri lalu
+ * dipasang memenuhi satu halaman A4.
+ *
+ * Menyerahkan seluruh template sebagai satu elemen tinggi kepada pemotong di
+ * atas melahirkan dua kekeliruan sekaligus. Pertama, wadah pembungkusnya
+ * selebar area pratinjau, bukan selebar halaman, sehingga lembar tercetak
+ * mengecil bersama seluruh ruang kosong di kanan-kirinya. Kedua, jarak
+ * antarhalaman pada pratinjau ikut terhitung, sehingga potongan bergeser
+ * makin jauh pada setiap halaman berikutnya dan memangkas penanda sudut di
+ * kaki halaman. Keduanya melanggar syarat cetak skala 100% yang justru
+ * diperingatkan oleh antarmuka.
+ */
+async function exportPagesToPdf(pages, filename) {
+  if (!pages?.length) throw new Error('Template belum siap dirender.');
+
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  for (let index = 0; index < pages.length; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const canvas = await renderToCanvas(pages[index]);
+    const scale = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+    const width = canvas.width * scale;
+    const height = canvas.height * scale;
+    if (index) pdf.addPage();
+    pdf.addImage(
+      canvas.toDataURL('image/jpeg', 0.94),
+      'JPEG',
+      (pageWidth - width) / 2,
+      (pageHeight - height) / 2,
+      width,
+      height,
+      undefined,
+      'FAST',
+    );
+  }
+
+  return saveBinaryFile({ filename, blob: pdf.output('blob'), mimeType: 'application/pdf' });
 }
 
 function buildCsv(rows, config) {
@@ -666,8 +716,10 @@ const inputClass =
  */
 const iconButtonClass = 'inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors';
 
-function TextInput(props) {
-  return <input className={cx(inputClass, props.className)} {...props} />;
+function TextInput({ className, ...rest }) {
+  // className disebar lebih dulu agar kelas pemanggil menambah gaya dasar,
+  // bukan menggantinya — termasuk tinggi minimum sasaran sentuh.
+  return <input {...rest} className={cx(inputClass, className)} />;
 }
 
 function SelectInput({ children, className, ...rest }) {
@@ -1196,15 +1248,17 @@ function AnswerKeyEditor({ config, answerKey, onChange, sheets }) {
   };
 
   const applyBulk = () => {
+    // Huruf yang tidak sah tidak boleh dibuang begitu saja: membuangnya
+    // memajukan seluruh kunci sesudahnya satu langkah, dan seluruh peserta
+    // tersekor keliru tanpa satu pun tanda. Posisi dipertahankan, karakter
+    // yang tidak dikenali disisakan kosong.
     const letters = bulk
       .toUpperCase()
-      .replace(/[^A-Z]/g, '')
-      .split('')
-      .filter((letter) => config.optionSet.includes(letter));
-    const next = new Array(config.numQuestions).fill('');
-    letters.slice(0, config.numQuestions).forEach((letter, index) => {
-      next[index] = letter;
-    });
+      .replace(/[^A-Z-]/g, '')
+      .split('');
+    const next = Array.from({ length: config.numQuestions }, (_, index) =>
+      config.optionSet.includes(letters[index]) ? letters[index] : '',
+    );
     onChange(next);
     setBulk('');
   };
@@ -1404,13 +1458,13 @@ function SheetCard({ sheet, metrics, onRemove, onInspect, onRename, onPageIndex,
           value={sheet.name}
           onChange={(event) => onRename(sheet.id, event.target.value.toUpperCase())}
           placeholder="NAMA PESERTA"
-          className="min-h-[40px] w-full rounded border border-slate-200 px-1.5 py-1 text-xs font-semibold uppercase text-slate-800 focus:border-indigo-400 focus:outline-none"
+          className="min-h-[44px] w-full rounded border border-slate-200 px-1.5 py-1 text-xs font-semibold uppercase text-slate-800 focus:border-indigo-400 focus:outline-none"
         />
         {metrics.pageCount > 1 ? (
           <select
             value={sheet.pageIndex || 0}
             onChange={(event) => onPageIndex(sheet.id, Number(event.target.value))}
-            className="min-h-[40px] w-full rounded border border-slate-200 px-1.5 py-1 text-[11px] text-slate-600 focus:border-indigo-400 focus:outline-none"
+            className="min-h-[44px] w-full rounded border border-slate-200 px-1.5 py-1 text-[11px] text-slate-600 focus:border-indigo-400 focus:outline-none"
           >
             {Array.from({ length: metrics.pageCount }, (_, page) => (
               <option key={page} value={page}>
@@ -1539,24 +1593,28 @@ function ManualEntryCard({ layout, onSubmit }) {
  */
 function CalibrationCard({ sheet, layout, omrOptions, onOmrOptions, onClose, onApply }) {
   const canvasRef = useRef(null);
+  const [reading, setReading] = useState(null);
   const [detection, setDetection] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  // Tahap mahal: penurunan resolusi, ambang, pencarian penanda, homografi.
+  // Hanya dijalankan ulang ketika citra atau geometri penyampelan berubah.
   useEffect(() => {
     let cancelled = false;
+    setReading(null);
+    setDetection(null);
+    setError('');
     if (!sheet?.image) return undefined;
 
     setBusy(true);
-    setError('');
     (async () => {
       try {
         const grayscale = await grayscaleFromSource(sheet.image, omrOptions.maxDim);
         const result = detectSheet(grayscale, layout, sheet.pageIndex || 0, omrOptions);
         if (cancelled) return;
-        setDetection(result);
+        setReading(result);
         if (!result.ok) setError(result.error);
-        await paintDetectionOverlay(canvasRef.current, sheet.image, result, omrOptions);
       } catch (issue) {
         if (!cancelled) setError(issue?.message || 'Kalibrasi gagal.');
       } finally {
@@ -1567,7 +1625,22 @@ function CalibrationCard({ sheet, layout, omrOptions, onOmrOptions, onClose, onA
     return () => {
       cancelled = true;
     };
-  }, [sheet?.id, sheet?.image, sheet?.pageIndex, layout, omrOptions]);
+  }, [sheet?.id, sheet?.image, sheet?.pageIndex, layout, omrOptions.maxDim, omrOptions.sampleRadiusFactor]);
+
+  // Tahap murah: hanya keputusan per butir. Inilah yang berubah ketika ambang
+  // digeser, sehingga penggeser terasa seketika alih-alih membaca ulang citra.
+  useEffect(() => {
+    if (!reading) {
+      setDetection(null);
+      return;
+    }
+    setDetection(reading.ok ? { ...reading, ...decideAnswers(reading.byItem, omrOptions) } : reading);
+  }, [reading, omrOptions.fillThreshold, omrOptions.marginThreshold]);
+
+  useEffect(() => {
+    if (!sheet?.image || !detection) return;
+    paintDetectionOverlay(canvasRef.current, sheet.image, detection, omrOptions).catch(() => {});
+  }, [detection, sheet?.image, omrOptions.fillThreshold, omrOptions.maxDim]);
 
   if (!sheet) return null;
 
@@ -1708,7 +1781,12 @@ function ScanPanel({
   const native = isNativeAndroid();
 
   const handleFiles = (fileList) => {
-    const files = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
+    // Penyedia berkas pada Android kerap menyerahkan MIME kosong lewat
+    // content://, sehingga menyaring ketat pada awalan "image/" membuang berkas
+    // yang sebenarnya sah tanpa memberi tahu siapa pun.
+    const files = Array.from(fileList || []).filter(
+      (file) => !file.type || file.type.startsWith('image/'),
+    );
     if (files.length) onAdd(files);
   };
 
@@ -1778,6 +1856,7 @@ function ScanPanel({
 
       {calibrationSheet ? (
         <CalibrationCard
+          key={calibrationSheet.id}
           sheet={calibrationSheet}
           layout={layout}
           omrOptions={omrOptions}
@@ -2526,6 +2605,49 @@ const LAYOUT_FIELDS = [
   { key: 'fiducialInsetMm', label: 'Jarak Penanda dari Tepi', step: 0.5, unit: 'mm', hint: 'Semakin ke tepi, semakin mudah dikenali.' },
 ];
 
+/**
+ * Kolom angka yang menjepit nilainya hanya ketika suntingan selesai.
+ *
+ * Menjepit pada setiap ketukan tombol membuat sebagian besar medan mustahil
+ * diisi: mengosongkan kolom menghasilkan nol yang langsung dijepit ke batas
+ * bawah, sehingga angka dua digit tidak pernah terjangkau, dan titik desimal
+ * terhapus sebelum digit di belakangnya sempat diketik.
+ */
+function NumberField({ value, onCommit, bounds, step, ...rest }) {
+  const [draft, setDraft] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(String(value));
+  }, [value, editing]);
+
+  const commit = () => {
+    setEditing(false);
+    const parsed = Number(draft);
+    const next = Number.isFinite(parsed) ? clamp(parsed, bounds[0], bounds[1]) : value;
+    setDraft(String(next));
+    if (next !== value) onCommit(next);
+  };
+
+  return (
+    <TextInput
+      type="number"
+      inputMode="decimal"
+      step={step}
+      min={bounds[0]}
+      max={bounds[1]}
+      value={draft}
+      onFocus={() => setEditing(true)}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+      {...rest}
+    />
+  );
+}
+
 function LayoutPanel({ layout, metrics, onLayout, onReset }) {
   const set = (patch) => onLayout(normalizeLayout({ ...layout, ...patch }));
 
@@ -2580,13 +2702,11 @@ function LayoutPanel({ layout, metrics, onLayout, onReset }) {
                 label={field.unit ? `${field.label} (${field.unit})` : field.label}
                 hint={`${field.hint} Rentang ${bounds[0]}–${bounds[1]}.`}
               >
-                <TextInput
-                  type="number"
-                  step={field.step}
-                  min={bounds[0]}
-                  max={bounds[1]}
+                <NumberField
                   value={layout[field.key]}
-                  onChange={(event) => set({ [field.key]: Number(event.target.value) })}
+                  bounds={bounds}
+                  step={field.step}
+                  onCommit={(next) => set({ [field.key]: next })}
                 />
               </Field>
             );
@@ -2710,26 +2830,30 @@ export default function App() {
   }, [layout.numQuestions]);
 
   /* ---- Turunan psikometrik ---- */
-  const graded = useMemo(() => {
+  const { graded, memberIds } = useMemo(() => {
     const finished = sheets.filter((sheet) => sheet.status === 'done');
 
-    let units = finished.map((sheet) => ({ ...sheet, sheetCount: 1 }));
+    let units = finished.map((sheet) => ({ ...sheet, sheetIds: [sheet.id] }));
     if (config.mergeByName) {
       const merged = new Map();
       units.forEach((unit) => {
         const key = (unit.name || '').trim().toUpperCase() || unit.id;
         const existing = merged.get(key);
         if (!existing) {
-          merged.set(key, { ...unit, answers: unit.answers.slice() });
+          merged.set(key, { ...unit, answers: unit.answers.slice(), sheetIds: [unit.id] });
           return;
         }
         existing.answers = existing.answers.map((letter, index) => letter ?? unit.answers[index] ?? null);
-        existing.sheetCount += 1;
+        existing.sheetIds.push(unit.id);
       });
       units = [...merged.values()];
     }
 
-    return units.map((unit) => gradeSheet(unit, answerKey, scoringConfig));
+    // Satu baris nilai dapat berdiri di atas beberapa lembar. Menyunting atau
+    // menghapusnya berdasarkan satu id saja akan menyisakan lembar lain yang
+    // segera membentuk kembali peserta itu dengan separuh jawaban hilang.
+    const lookup = new Map(units.map((unit) => [unit.id, unit.sheetIds]));
+    return { graded: units.map((unit) => gradeSheet(unit, answerKey, scoringConfig)), memberIds: lookup };
   }, [sheets, answerKey, scoringConfig, config.mergeByName]);
 
   const { rows, sample, basis } = useMemo(() => applyNorms(graded, scoringConfig), [graded, scoringConfig]);
@@ -2771,8 +2895,18 @@ export default function App() {
         }),
       );
       const valid = prepared.filter(Boolean);
+      const rejected = prepared.length - valid.length;
       setSheets((prev) => [...prev, ...valid]);
-      if (valid.length) notify(`${valid.length} lembar ditambahkan ke antrean.`, 'success');
+
+      if (valid.length && !rejected) {
+        notify(`${valid.length} lembar ditambahkan ke antrean.`, 'success');
+      } else if (valid.length) {
+        notify(`${valid.length} lembar ditambahkan, ${rejected} berkas tidak dapat dibaca.`, 'warn');
+      } else {
+        // Kegagalan yang senyap adalah yang paling membingungkan: antrean tetap
+        // kosong dan pemakai tidak diberi tahu bahwa berkasnya ditolak.
+        notify(`${rejected} berkas tidak dapat dibaca sebagai citra. Coba format JPG atau PNG.`, 'error');
+      }
     },
     [makeSheet, notify],
   );
@@ -2870,20 +3004,45 @@ export default function App() {
     [notify],
   );
 
-  const handleEditAnswer = useCallback((id, index, letter) => {
-    setSheets((prev) =>
-      prev.map((sheet) => {
-        if (sheet.id !== id) return sheet;
-        const answers = sheet.answers.slice();
-        answers[index] = answers[index] === letter ? null : letter;
-        return { ...sheet, answers };
-      }),
-    );
-  }, []);
+  const membersOf = useCallback((id) => memberIds.get(id) || [id], [memberIds]);
 
-  const handleRename = useCallback((id, name) => updateSheet(id, { name }), [updateSheet]);
+  const handleEditAnswer = useCallback(
+    (id, index, letter) => {
+      const members = membersOf(id);
+      setSheets((prev) =>
+        prev.map((sheet) => {
+          if (!members.includes(sheet.id)) return sheet;
+          const answers = sheet.answers.slice();
+          if (sheet.id === id) {
+            answers[index] = answers[index] === letter ? null : letter;
+          } else {
+            // Lembar anggota lain dikosongkan pada butir ini agar suntingan
+            // tidak dibatalkan oleh nilai lama yang muncul kembali saat digabung.
+            answers[index] = null;
+          }
+          return { ...sheet, answers };
+        }),
+      );
+    },
+    [membersOf],
+  );
+
+  const handleRename = useCallback(
+    (id, name) => {
+      const members = membersOf(id);
+      setSheets((prev) => prev.map((sheet) => (members.includes(sheet.id) ? { ...sheet, name } : sheet)));
+    },
+    [membersOf],
+  );
   const handlePageIndex = useCallback((id, pageIndex) => updateSheet(id, { pageIndex }), [updateSheet]);
-  const handleRemove = useCallback((id) => setSheets((prev) => prev.filter((sheet) => sheet.id !== id)), []);
+  const handleRemove = useCallback(
+    (id) => {
+      const members = membersOf(id);
+      setSheets((prev) => prev.filter((sheet) => !members.includes(sheet.id)));
+      setCalibrationId((current) => (members.includes(current) ? null : current));
+    },
+    [membersOf],
+  );
 
   /* ---- Ekspor ---- */
   const describeTarget = (result) =>
@@ -2920,11 +3079,8 @@ export default function App() {
         setTab('template');
         await sleep(400);
       }
-      const result = await exportElementToPdf(
-        templateRef.current,
-        `template-ljk-${slugify(config.testName)}.pdf`,
-        'portrait',
-      );
+      const pages = templateRef.current ? [...templateRef.current.querySelectorAll(':scope > div')] : [];
+      const result = await exportPagesToPdf(pages, `template-ljk-${slugify(config.testName)}.pdf`);
       notify(`Template LJK selesai. ${describeTarget(result)}`, 'success');
     } catch (error) {
       notify(error?.message || 'Ekspor template gagal.', 'error');

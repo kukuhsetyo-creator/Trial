@@ -275,11 +275,31 @@ for (const [layoutName, rawLayout] of Object.entries(LAYOUTS)) {
   }
 }
 
-console.log('-'.repeat(86));
-console.log(`Lulus: ${passed} | Gagal aman (ditolak detektor): ${failedSafely} | Keliru senyap: ${failedSilently}`);
+const total = passed + failedSafely + failedSilently;
+// Menolak membaca memang perilaku yang dikehendaki ketika grid tidak selaras,
+// tetapi menolak semuanya juga memenuhi syarat "tidak ada yang keliru senyap".
+// Karena itu tingkat keberhasilan diberi lantai tersendiri: tanpa lantai ini,
+// perubahan yang mematikan detektor akan dilaporkan sebagai LULUS.
+const REJECTION_CEILING = 0.15;
+const rejectionRate = total ? failedSafely / total : 1;
 
-if (failedSilently > 0) {
-  console.error('\nGAGAL: terdapat pembacaan keliru yang tidak terdeteksi detektor.');
+console.log('-'.repeat(86));
+console.log(
+  `Lulus: ${passed}/${total} | Gagal aman (ditolak detektor): ${failedSafely} ` +
+    `(${(rejectionRate * 100).toFixed(1)}%) | Keliru senyap: ${failedSilently}`,
+);
+
+const problems = [];
+if (failedSilently > 0) problems.push('terdapat pembacaan keliru yang tidak terdeteksi detektor');
+if (rejectionRate > REJECTION_CEILING) {
+  problems.push(
+    `detektor menolak ${(rejectionRate * 100).toFixed(1)}% skenario, di atas batas ${(REJECTION_CEILING * 100).toFixed(0)}%`,
+  );
+}
+if (!total) problems.push('tidak ada skenario yang dijalankan');
+
+if (problems.length) {
+  console.error('\nGAGAL: ' + problems.join('; ') + '.');
   process.exit(1);
 }
-console.log('\nLULUS: tidak ada pembacaan keliru yang lolos tanpa terdeteksi.');
+console.log('\nLULUS: seluruh skenario terbaca, tanpa pembacaan keliru yang lolos tanpa terdeteksi.');

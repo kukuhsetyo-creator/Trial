@@ -98,7 +98,8 @@ export function computeLayoutMetrics(rawLayout) {
   if (pageCount > 1) {
     issues.push(
       `Layout ini terbagi menjadi ${pageCount} halaman (${perPage} butir per halaman). ` +
-        'Setiap halaman dipindai sebagai lembar terpisah dan disatukan lewat pencocokan nama.',
+        'Setiap halaman dipindai sebagai lembar terpisah. Nyalakan "Gabungkan lembar dengan nama sama" ' +
+        'pada panel Konfigurasi, atau setiap halaman akan terhitung sebagai peserta tersendiri.',
     );
   }
 
