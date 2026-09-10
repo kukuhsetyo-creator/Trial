@@ -11,7 +11,9 @@
     "android:add": "cap add android",
     "android:sync": "npm run build && cap sync android",
     "android:open": "cap open android",
-    "test:omr": "node tools/omr-test.mjs"
+    "test:omr": "node tools/omr-test.mjs",
+    "test:filename": "node tools/filename-test.mjs",
+    "test": "npm run test:omr && npm run test:filename"
   },
   "dependencies": {
     "@capacitor/camera": "^6.1.3",

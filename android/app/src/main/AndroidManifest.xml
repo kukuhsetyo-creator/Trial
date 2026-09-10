@@ -1,8 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+      Pencadangan dimatikan, bukan sekadar disaring.
+
+      Aplikasi ini menyimpan nama peserta beserta pola jawaban, skor mentah,
+      skor deviasi, dan klasifikasi inteligensinya pada localStorage WebView.
+      Dengan targetSdkVersion 34 dan allowBackup bernilai true, Android Auto
+      Backup menyalin isi itu ke Google Drive milik pemakai secara berkala —
+      diam-diam membatalkan jaminan yang dinyatakan aplikasi ini sendiri bahwa
+      data peserta tidak meninggalkan perangkat. Pada perangkat di bawah
+      Android 9 cadangan tersebut bahkan tidak terenkripsi ujung-ke-ujung
+      dengan PIN perangkat, sehingga perlindungannya semata bergantung pada
+      keamanan akun Google.
+
+      Konsekuensinya perlu diketahui: data koreksi tidak ikut berpindah ketika
+      pemakai berganti ponsel. Untuk data asesmen psikologis, kehilangan itu
+      jauh lebih ringan daripada penyalinan yang tidak disadari.
+    -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

@@ -35,7 +35,9 @@ npm install
 npm run dev       # pengembangan di http://localhost:5173
 npm run build     # bundel produksi ke dist/
 npm run preview   # meninjau hasil build
+npm test          # seluruh uji
 npm run test:omr  # uji akurasi mesin OMR (Node, tanpa dependensi tambahan)
+npm run test:filename  # uji pembersihan nama berkas ekspor
 ```
 
 ### Android
@@ -50,6 +52,13 @@ Membangun APK memerlukan JDK 17 dan Android Studio pada mesin Anda. Proyek
 Izin `INTERNET` tetap dideklarasikan karena Capacitor melayani aset dari server
 lokal di dalam WebView; aplikasi tidak pernah menghubungi alamat di luar
 perangkat.
+
+Pencadangan dimatikan (`allowBackup="false"` beserta aturan pengecualian untuk
+Android 12 ke atas). Tanpa itu, Android Auto Backup akan menyalin nama peserta
+beserta skornya ke Google Drive milik pemakai secara berkala — membatalkan
+jaminan bahwa data tidak meninggalkan perangkat, tanpa sepengetahuan pemeriksa
+maupun peserta. Konsekuensinya, data koreksi tidak ikut berpindah ketika pemakai
+berganti ponsel; ekspor PDF atau CSV adalah jalur pemindahan yang disengaja.
 
 ## Cara kerja pembacaan
 

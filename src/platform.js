@@ -32,6 +32,24 @@ export async function capturePhoto() {
   return photo?.dataUrl || '';
 }
 
+/**
+ * Membersihkan nama berkas sebelum diserahkan ke sistem berkas.
+ *
+ * Pembersihan diletakkan di sini, bukan di setiap pemanggil, karena inilah satu-
+ * satunya pintu menuju Filesystem.writeFile — sehingga setiap jalur ekspor yang
+ * ditambahkan kemudian ikut terlindungi tanpa perlu mengingat aturannya.
+ * Filesystem.writeFile dipanggil dengan recursive, jadi pemisah jalur yang lolos
+ * akan membuat direktori baru dan menulis berkas di luar folder Documents.
+ */
+export function sanitizeFilename(name) {
+  const base = String(name || '').split(/[\\/]/).pop();
+  const cleaned = base
+    .replace(/[^\w.-]+/g, '-')
+    .replace(/^[.\-]+/, '')
+    .slice(0, 120);
+  return cleaned || 'berkas';
+}
+
 function base64FromDataUrl(dataUrl) {
   return String(dataUrl || '').split(',')[1] || '';
 }
@@ -50,7 +68,8 @@ function blobToDataUrl(blob) {
  * dibagikan melalui lembar berbagi sistem; di peramban dipakai unduhan biasa.
  * Mengembalikan keterangan singkat tentang tujuan penyimpanan.
  */
-export async function saveBinaryFile({ filename, blob, dataUrl, mimeType }) {
+export async function saveBinaryFile({ filename: rawFilename, blob, dataUrl, mimeType }) {
+  const filename = sanitizeFilename(rawFilename);
   const resolvedDataUrl = dataUrl || (blob ? await blobToDataUrl(blob) : '');
   if (!resolvedDataUrl) throw new Error('Tidak ada data untuk disimpan.');
 
