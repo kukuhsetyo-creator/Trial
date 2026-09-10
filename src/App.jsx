@@ -597,9 +597,9 @@ function Button({ variant = 'primary', size = 'md', icon: Icon, children, classN
     success: 'bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:outline-emerald-600 shadow-sm',
   };
   const sizes = {
-    sm: 'px-2.5 py-1.5 text-xs gap-1.5',
-    md: 'px-3.5 py-2 text-sm gap-2',
-    lg: 'px-5 py-2.5 text-sm gap-2',
+    sm: 'min-h-[44px] px-3 py-1.5 text-xs gap-1.5',
+    md: 'min-h-[44px] px-3.5 py-2 text-sm gap-2',
+    lg: 'min-h-[48px] px-5 py-2.5 text-sm gap-2',
   };
 
   return (
@@ -656,8 +656,15 @@ function Field({ label, hint, children, className }) {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 ' +
+  'w-full min-h-[44px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 ' +
   'placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100';
+
+/**
+ * Tombol berikon tanpa teks adalah sasaran sentuh yang paling rawan: luasnya
+ * hanya sebesar ikonnya, dan sebagian di antaranya bersifat merusak. Bantalan
+ * ditetapkan eksplisit agar luas sentuh tidak mengikuti ukuran ikon.
+ */
+const iconButtonClass = 'inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors';
 
 function TextInput(props) {
   return <input className={cx(inputClass, props.className)} {...props} />;
@@ -681,7 +688,7 @@ function Toggle({ checked, onChange, label, hint }) {
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-start gap-3 rounded-lg border border-slate-200 p-3 text-left transition-colors hover:bg-slate-50"
+      className="flex min-h-[44px] w-full items-start gap-3 rounded-lg border border-slate-200 p-3 text-left transition-colors hover:bg-slate-50"
     >
       <span
         className={cx(
@@ -1297,17 +1304,17 @@ function AnswerKeyEditor({ config, answerKey, onChange, sheets }) {
               key={index}
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-2.5 py-1.5"
             >
-              <span className="w-7 shrink-0 text-right text-xs font-semibold tabular-nums text-slate-500">
+              <span className="w-6 shrink-0 text-right text-xs font-semibold tabular-nums text-slate-500">
                 {index + 1}.
               </span>
-              <div className="flex flex-1 gap-1">
+              <div className="flex flex-1 gap-[3px]">
                 {options.map((option) => (
                   <button
                     key={option}
                     type="button"
                     onClick={() => setAt(index, option)}
                     className={cx(
-                      'flex h-7 flex-1 items-center justify-center rounded-md border text-xs font-semibold transition-colors',
+                      'flex h-11 flex-1 items-center justify-center rounded-md border text-xs font-semibold transition-colors',
                       letter === option
                         ? 'border-indigo-600 bg-indigo-600 text-white'
                         : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-300 hover:text-indigo-600',
@@ -1360,34 +1367,34 @@ function SheetCard({ sheet, metrics, onRemove, onInspect, onRename, onPageIndex,
           <Icon className={cx('h-3 w-3', sheet.status === 'processing' && 'animate-spin')} />
           {sheet.source === 'manual' ? 'Manual' : meta.label}
         </span>
-        <div className="absolute right-1.5 top-1.5 flex flex-col gap-1">
+        <div className="absolute right-1 top-1 flex flex-col gap-0.5">
           {sheet.image ? (
             <button
               type="button"
               onClick={() => onCalibrate(sheet.id)}
-              className="rounded-md bg-white/90 p-1.5 text-slate-600 hover:bg-white"
+              className={cx(iconButtonClass, 'bg-white/90 text-slate-600 hover:bg-white')}
               title="Kalibrasi pembacaan"
             >
-              <Crosshair className="h-3.5 w-3.5" />
+              <Crosshair className="h-4 w-4" />
             </button>
           ) : null}
           {sheet.status === 'done' ? (
             <button
               type="button"
               onClick={() => onInspect(sheet.id)}
-              className="rounded-md bg-white/90 p-1.5 text-slate-600 hover:bg-white"
+              className={cx(iconButtonClass, 'bg-white/90 text-slate-600 hover:bg-white')}
               title="Periksa hasil"
             >
-              <Eye className="h-3.5 w-3.5" />
+              <Eye className="h-4 w-4" />
             </button>
           ) : null}
           <button
             type="button"
             onClick={() => onRemove(sheet.id)}
-            className="rounded-md bg-white/90 p-1.5 text-rose-600 hover:bg-white"
+            className={cx(iconButtonClass, 'bg-white/90 text-rose-600 hover:bg-white')}
             title="Hapus lembar"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -1397,13 +1404,13 @@ function SheetCard({ sheet, metrics, onRemove, onInspect, onRename, onPageIndex,
           value={sheet.name}
           onChange={(event) => onRename(sheet.id, event.target.value.toUpperCase())}
           placeholder="NAMA PESERTA"
-          className="w-full rounded border border-slate-200 px-1.5 py-1 text-xs font-semibold uppercase text-slate-800 focus:border-indigo-400 focus:outline-none"
+          className="min-h-[40px] w-full rounded border border-slate-200 px-1.5 py-1 text-xs font-semibold uppercase text-slate-800 focus:border-indigo-400 focus:outline-none"
         />
         {metrics.pageCount > 1 ? (
           <select
             value={sheet.pageIndex || 0}
             onChange={(event) => onPageIndex(sheet.id, Number(event.target.value))}
-            className="w-full rounded border border-slate-200 px-1.5 py-1 text-[11px] text-slate-600 focus:border-indigo-400 focus:outline-none"
+            className="min-h-[40px] w-full rounded border border-slate-200 px-1.5 py-1 text-[11px] text-slate-600 focus:border-indigo-400 focus:outline-none"
           >
             {Array.from({ length: metrics.pageCount }, (_, page) => (
               <option key={page} value={page}>
@@ -1493,8 +1500,8 @@ function ManualEntryCard({ layout, onSubmit }) {
         <div className="thin-scroll grid max-h-72 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
           {answers.map((letter, index) => (
             <div key={index} className="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-1">
-              <span className="w-7 text-right text-[11px] font-semibold tabular-nums text-slate-500">{index + 1}.</span>
-              <div className="flex flex-1 gap-1">
+              <span className="w-6 text-right text-[11px] font-semibold tabular-nums text-slate-500">{index + 1}.</span>
+              <div className="flex flex-1 gap-[3px]">
                 {options.map((option) => (
                   <button
                     key={option}
@@ -1507,7 +1514,7 @@ function ManualEntryCard({ layout, onSubmit }) {
                       })
                     }
                     className={cx(
-                      'h-7 min-w-[28px] flex-1 rounded text-[11px] font-semibold transition-colors',
+                      'h-11 min-w-[38px] flex-1 rounded text-[11px] font-semibold transition-colors',
                       letter === option
                         ? 'bg-indigo-600 text-white'
                         : 'bg-white text-slate-400 ring-1 ring-inset ring-slate-200 hover:text-indigo-600',
@@ -1958,7 +1965,7 @@ function ResultsTable({ rows, config, onRename, onInspect, onRemove }) {
                         setEditingId(row.id);
                         setDraftName(row.name);
                       }}
-                      className="group inline-flex items-center gap-1.5 text-left text-sm font-medium text-slate-800"
+                      className="group inline-flex min-h-[44px] items-center gap-1.5 text-left text-sm font-medium text-slate-800"
                     >
                       {row.name}
                       <Pencil className="h-3 w-3 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
@@ -2000,7 +2007,7 @@ function ResultsTable({ rows, config, onRename, onInspect, onRemove }) {
                     <button
                       type="button"
                       onClick={() => onInspect(row.id)}
-                      className="rounded-md p-1.5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"
+                      className={cx(iconButtonClass, 'text-slate-500 hover:bg-indigo-50 hover:text-indigo-600')}
                       title="Periksa rincian"
                     >
                       <Eye className="h-4 w-4" />
@@ -2008,7 +2015,7 @@ function ResultsTable({ rows, config, onRename, onInspect, onRemove }) {
                     <button
                       type="button"
                       onClick={() => onRemove(row.id)}
-                      className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                      className={cx(iconButtonClass, 'text-slate-400 hover:bg-rose-50 hover:text-rose-600')}
                       title="Hapus peserta"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -2040,14 +2047,14 @@ function DetailModal({ row, config, onClose, onEditAnswer, onRename }) {
             <input
               value={row.name}
               onChange={(event) => onRename(row.id, event.target.value.toUpperCase())}
-              className="w-full border-0 p-0 text-base font-bold uppercase text-slate-900 focus:outline-none"
+              className="min-h-[44px] w-full border-0 p-0 text-base font-bold uppercase text-slate-900 focus:outline-none"
             />
             <p className="text-xs text-slate-500">
               {row.fileName} — nilai {fmt(row.scaledScore, 1)} / {config.scaleMax}
               {row.classification ? ` — ${row.classification.label}` : ''}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100">
+          <button type="button" onClick={onClose} className={cx(iconButtonClass, 'text-slate-400 hover:bg-slate-100')}>
             <X className="h-5 w-5" />
           </button>
         </header>
@@ -2096,14 +2103,14 @@ function DetailModal({ row, config, onClose, onEditAnswer, onRename }) {
                   )}
                 >
                   <span className="w-6 text-right text-[11px] font-semibold tabular-nums text-slate-500">{item.no}.</span>
-                  <div className="flex flex-1 gap-1">
+                  <div className="flex flex-1 gap-[3px]">
                     {options.map((option) => (
                       <button
                         key={option}
                         type="button"
                         onClick={() => onEditAnswer(row.id, item.no - 1, option)}
                         className={cx(
-                          'h-6 flex-1 rounded text-[11px] font-semibold transition-colors',
+                          'h-11 flex-1 rounded text-[11px] font-semibold transition-colors',
                           item.response === option
                             ? 'bg-slate-800 text-white'
                             : 'bg-white text-slate-400 ring-1 ring-inset ring-slate-200 hover:text-slate-700',
@@ -2365,7 +2372,7 @@ function ConfigPanel({ config, onConfig, logo, onLogo }) {
                     if (file) onLogo(await fileToDataUrl(file));
                     event.target.value = '';
                   }}
-                  className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"
+                  className="block w-full text-xs text-slate-500 file:mr-3 file:min-h-[44px] file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"
                 />
                 {logo ? (
                   <Button variant="ghost" size="sm" icon={Trash2} onClick={() => onLogo('')}>
@@ -3235,9 +3242,9 @@ export default function App() {
             <button
               type="button"
               onClick={() => setToast(null)}
-              className="ml-auto opacity-60 transition-opacity hover:opacity-100"
+              className="-my-1.5 ml-auto inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg opacity-60 transition-opacity hover:opacity-100"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>
