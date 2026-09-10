@@ -42,12 +42,34 @@ npm run test:filename  # uji pembersihan nama berkas ekspor
 
 ### Android
 
+Prasyarat sekali pasang: JDK 17 dan Android SDK dengan `platforms;android-34`
+beserta `build-tools;34.0.0`. Android Studio memasang keduanya sekaligus; bila
+memakai command-line tools saja, cukup
+
 ```bash
-npm run android:sync   # build web lalu salin ke proyek android/
-npm run android:open   # buka di Android Studio untuk membangun APK
+export ANDROID_HOME="$HOME/Android/Sdk"          # sesuaikan
+sdkmanager "platforms;android-34" "build-tools;34.0.0"
 ```
 
-Membangun APK memerlukan JDK 17 dan Android Studio pada mesin Anda. Proyek
+Membangun APK debug dalam satu perintah:
+
+```bash
+npm run android:apk
+# hasil: android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Pada Windows, jalankan `npm run android:sync` lalu `cd android` dan
+`gradlew.bat assembleDebug`. Alternatifnya, `npm run android:open` membuka
+proyek di Android Studio.
+
+APK debug sudah cukup untuk uji lapangan dan dapat dipasang langsung setelah
+"sumber tidak dikenal" diizinkan pada perangkat. Untuk distribusi, tanda tangani
+build release dengan keystore Anda sendiri.
+
+Catatan kompatibilitas: proyek ini memakai Gradle 8.2.1 dan Android Gradle
+Plugin 8.2.1. Gradle 8.2.1 terverifikasi mengompilasi skrip build pada JDK 21,
+namun pasangan yang didokumentasikan untuk AGP 8.2 adalah JDK 17 — pakai JDK 17
+bila build gagal dengan keluhan versi kelas. Proyek
 `android/` sudah tersedia di repositori beserta izin kamera pada manifesnya.
 Izin `INTERNET` tetap dideklarasikan karena Capacitor melayani aset dari server
 lokal di dalam WebView; aplikasi tidak pernah menghubungi alamat di luar

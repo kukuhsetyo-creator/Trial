@@ -13,7 +13,8 @@
     "android:open": "cap open android",
     "test:omr": "node tools/omr-test.mjs",
     "test:filename": "node tools/filename-test.mjs",
-    "test": "npm run test:omr && npm run test:filename"
+    "test": "npm run test:omr && npm run test:filename",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor/camera": "^6.1.3",
