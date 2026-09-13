@@ -74,11 +74,14 @@ else:
 st.subheader("Status pembangunan")
 st.markdown(
     """
-Halaman **Ingest**, **Coding Inisial**, **Memo**, **Audit Trail**, dan **Ekspor**
-sudah berfungsi. Halaman **Kategorisasi** menunggu modul agregasi tema dan
-antrean peninjauan, dan menyatakan hal itu secara eksplisit alih-alih menampilkan
-antarmuka yang tidak terhubung ke apa pun; tombol validasi sengaja belum dibuat
-agar perubahan status tidak pernah menempuh jalan pintas di luar
-`src/validation/review_queue.py`.
+Seluruh halaman sudah berfungsi untuk **RTA**, dari ingest sampai peninjauan
+manusia. Perubahan status hanya terjadi lewat `src/validation/review_queue.py`
+pada halaman Tema dan Peninjauan, dan setiap tindakan tercatat di
+`validation_events`.
+
+Modul metode untuk TA klasik, IPA, dan Grounded Theory belum dibangun. Halaman
+pembentukan tema menyatakan hal itu ketika sesi analisis yang dipilih memakai
+salah satu metode tersebut, alih-alih menjalankan logika RTA atas nama metode
+lain.
 """
 )

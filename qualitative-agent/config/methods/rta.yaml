@@ -24,5 +24,28 @@ prompts:
     frekuensi kemunculan. Untuk setiap tema, jelaskan "cerita" apa yang ia tangkap
     dan sebutkan minimal satu kutipan potensial yang mendukungnya.
     Kode: {code_list}
+  theme_review: |
+    Tinjau tema berikut terhadap kode dan kutipan yang menopangnya. Untuk setiap tema,
+    nilai apakah ia memiliki inti yang jelas dan batas yang dapat dipertahankan, apakah
+    ia sekadar ringkasan topik alih-alih menangkap sebuah makna, dan apakah ada kode di
+    dalamnya yang sebenarnya menuturkan cerita lain. Nyatakan tema mana yang perlu
+    dipecah, digabung, atau dilepas. Jangan menilai tema berdasarkan berapa banyak kode
+    yang tercakup di dalamnya.
+    Tema beserta kode pendukungnya: {theme_bundle}
+  theme_definition_naming: |
+    Susun definisi dan nama akhir untuk tema berikut. Definisi menyatakan cakupan dan
+    batas tema dalam dua sampai empat kalimat, dan nama tema sebaiknya membawa sesuatu
+    dari suara partisipan alih-alih menjadi label kategori yang datar. Sebutkan satu
+    kutipan yang paling tajam mewakilinya.
+    Tema: {theme_label}
+    Definisi kerja: {theme_definition}
+    Kode dan kutipan: {codes_and_quotes}
+  reflexive_memo: |
+    Tulis memo reflektif atas keputusan analitik berikut. Fokuskan pada posisi peneliti:
+    asumsi apa yang sedang bekerja, kemungkinan apa yang tertutup oleh pembacaan ini,
+    dan bagian data mana yang terasa menolak interpretasi yang sedang dibangun. Memo ini
+    bukan ringkasan hasil dan tidak boleh menjadi pembenaran atas tema yang sudah dipilih.
+    Tahap: {stage}
+    Konteks: {context}
 required_human_review: true
 allow_interrater_reliability_metric: false   # penegasan eksplisit, jangan hitung Kappa dsb.

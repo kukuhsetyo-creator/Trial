@@ -90,16 +90,18 @@ if st.button("Usulkan kode untuk unit ini", type="primary",
             st.error(f"Pemanggilan gagal: {exc}")
             st.caption("Kegagalan tetap tercatat pada audit trail.")
         else:
-            st.session_state["proposals"] = proposals
+            from src.store import save_codes
+
+            ids = save_codes(run["id"], unit["id"], proposals)
+            st.session_state["proposals"] = [p | {"code_id": i} for p, i in zip(proposals, ids)]
 
 proposals = st.session_state.get("proposals")
 if proposals:
     st.subheader("Proposal kode")
     st.dataframe(proposals, width="stretch", hide_index=True)
-    st.warning(
-        "Proposal ini **belum tersimpan** ke tabel `codes`. Lapisan persistensi kode belum "
-        "dibangun, dan menuliskannya langsung dari antarmuka akan menempatkan logika basis "
-        "data di tempat yang salah. Unduh sebagai JSON bila perlu disimpan sementara."
+    st.success(
+        f"{len(proposals)} kode tersimpan dengan status `proposed`. Promosi statusnya "
+        "hanya terjadi di halaman Kategorisasi lewat antrean peninjauan."
     )
     st.download_button(
         "Unduh proposal (JSON)",
@@ -107,3 +109,17 @@ if proposals:
         file_name=f"proposal-kode-run{run['id']}-unit{unit['id']}.json",
         mime="application/json",
     )
+
+st.divider()
+st.subheader("Kode pada sesi ini")
+from src.store import fetch_codes  # noqa: E402
+
+tersimpan = fetch_codes(run["id"])
+if tersimpan:
+    st.dataframe(
+        [{k: c[k] for k in ("id", "label", "status", "created_by", "unit_id", "justification")}
+         for c in tersimpan],
+        width="stretch", hide_index=True,
+    )
+else:
+    st.info("Belum ada kode pada sesi ini.")
