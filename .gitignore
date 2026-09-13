@@ -9,3 +9,6 @@ dist-ssr
 npm-debug.log*
 yarn-error.log*
 .vite
+
+# basis data runtime agen kualitatif
+db/qualitative.db
