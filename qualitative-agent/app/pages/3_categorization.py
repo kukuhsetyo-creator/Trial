@@ -1,10 +1,8 @@
 """Halaman pembentukan tema dan antrean peninjauan manusia."""
 
-import os
-
 import streamlit as st
 
-from _bootstrap import connect, require_db, sidebar_footer
+from _bootstrap import api_key_tersedia, connect, require_db, sidebar_footer
 
 st.set_page_config(page_title="Kategorisasi", page_icon="🗃️", layout="wide")
 sidebar_footer()
@@ -50,7 +48,7 @@ with tab_tema:
             "Saat ini hanya RTA yang memiliki modulnya sendiri di `src/coding/rta.py`."
         )
     else:
-        punya_kunci = bool(os.environ.get("ANTHROPIC_API_KEY"))
+        punya_kunci = bool(api_key_tersedia())
         if not punya_kunci:
             st.warning("`ANTHROPIC_API_KEY` belum diset; tahap yang memanggil model dinonaktifkan.")
 

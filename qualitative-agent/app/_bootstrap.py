@@ -19,6 +19,9 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.db import DB_PATH, connect  # noqa: E402
+from src.env import api_key_tersedia, load_env  # noqa: E402
+
+load_env()
 
 METHODS_DIR = PROJECT_ROOT / "config" / "methods"
 

@@ -1,11 +1,10 @@
 """Halaman coding inisial."""
 
 import json
-import os
-
 import streamlit as st
 
-from _bootstrap import connect, load_method_configs, require_db, sidebar_footer
+from _bootstrap import (api_key_tersedia, connect, load_method_configs,
+                        require_db, sidebar_footer)
 
 st.set_page_config(page_title="Open Coding", page_icon="🏷️", layout="wide")
 sidebar_footer()
@@ -68,14 +67,14 @@ konteks = st.text_input(
     value=f"{unit['title']}" + (f" · partisipan {unit['participant_id']}" if unit["participant_id"] else ""),
 )
 
-if not os.environ.get("ANTHROPIC_API_KEY"):
+if not api_key_tersedia():
     st.warning(
         "`ANTHROPIC_API_KEY` belum diset, sehingga pemanggilan model tidak dapat dilakukan. "
         "Salin `.env.example` menjadi `.env` dan isi kuncinya."
     )
 
 if st.button("Usulkan kode untuk unit ini", type="primary",
-             disabled=not os.environ.get("ANTHROPIC_API_KEY")):
+             disabled=not api_key_tersedia()):
     from src.coding.open_coding import generate_initial_codes
 
     with st.spinner("Memanggil model dan mencatat audit trail..."):

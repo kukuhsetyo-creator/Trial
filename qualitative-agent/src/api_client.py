@@ -44,6 +44,9 @@ def _build_client() -> Any:
             "Paket 'anthropic' belum terpasang. Jalankan: pip install -r requirements.txt"
         ) from exc
 
+    from src.env import load_env
+
+    load_env()
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         raise RuntimeError(
