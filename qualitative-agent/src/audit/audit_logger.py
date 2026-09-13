@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.db import PROJECT_ROOT, connect
+from src.db import PROJECT_ROOT, connect, utc_now_iso
 
 AUDIT_TRAIL_DIR = PROJECT_ROOT / "audit_trail"
 
@@ -29,10 +29,6 @@ AUDIT_TRAIL_DIR = PROJECT_ROOT / "audit_trail"
 # menjawab, sehingga baris audit tetap memenuhi constraint NOT NULL tanpa
 # berpura-pura bahwa ada respons yang diterima.
 FAILURE_RESPONSE_PREFIX = "[CALL_FAILED]"
-
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def _append_jsonl(record: dict[str, Any]) -> None:
@@ -79,7 +75,7 @@ def log_call(
     if output_tokens is None:
         output_tokens = getattr(response, "output_tokens", None)
 
-    called_at = _utc_now()
+    called_at = utc_now_iso()
     owns_connection = conn is None
     conn = conn or connect()
     try:

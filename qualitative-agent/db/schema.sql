@@ -7,7 +7,7 @@ CREATE TABLE documents (
     source_type     TEXT NOT NULL CHECK (source_type IN ('book','interview_transcript','document','field_note','other')),
     file_path       TEXT NOT NULL,          -- path relatif ke data/raw/
     participant_id  TEXT,                   -- untuk IPA: wajib diisi, satu kasus = satu participant_id
-    added_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+    added_at        TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00','now')),
     metadata_json   TEXT                    -- konteks tambahan (demografi, tanggal wawancara, dsb.)
 );
 
@@ -27,7 +27,7 @@ CREATE TABLE method_runs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     method          TEXT NOT NULL CHECK (method IN ('ta_classic','rta','ipa','grounded_theory')),
     project_label   TEXT NOT NULL,
-    started_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+    started_at      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00','now')),
     status          TEXT NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress','saturated','closed')),
     config_snapshot_json TEXT               -- salinan config/methods/*.yaml saat run dimulai
 );
@@ -42,7 +42,7 @@ CREATE TABLE codes (
     coding_level    TEXT CHECK (coding_level IN ('descriptive','linguistic','conceptual')), -- relevan untuk IPA
     status          TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','validated','revised','rejected')),
     created_by      TEXT NOT NULL DEFAULT 'model' CHECK (created_by IN ('model','human')),
-    created_at      TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00','now'))
 );
 
 -- Kategori/Tema (level agregasi di atas kode) — mendukung hierarki tema/subtema
@@ -59,7 +59,7 @@ CREATE TABLE categories (
                     )),
     is_deviant_case TEXT CHECK (is_deviant_case IN ('yes','no')) DEFAULT 'no',
     status          TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','validated','revised','rejected')),
-    created_at      TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00','now'))
 );
 
 -- Relasi banyak-ke-banyak kode -> kategori
@@ -87,7 +87,7 @@ CREATE TABLE memos (
     related_category_id INTEGER REFERENCES categories(id),
     content         TEXT NOT NULL,
     created_by      TEXT NOT NULL CHECK (created_by IN ('model','human')),
-    created_at      TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00','now'))
 );
 
 -- Audit trail setiap pemanggilan API
@@ -100,7 +100,7 @@ CREATE TABLE audit_log (
     model_used      TEXT NOT NULL,
     input_tokens    INTEGER,
     output_tokens   INTEGER,
-    called_at       TEXT DEFAULT CURRENT_TIMESTAMP
+    called_at       TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00','now'))
 );
 
 -- Antrean validasi manusia (state machine eksplisit, terpisah dari status kolom di atas
@@ -113,7 +113,7 @@ CREATE TABLE validation_events (
     previous_label  TEXT,
     new_label       TEXT,
     reviewer_note   TEXT,
-    reviewed_at     TEXT DEFAULT CURRENT_TIMESTAMP
+    reviewed_at     TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00','now'))
 );
 
 CREATE INDEX idx_units_document ON units(document_id);

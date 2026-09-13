@@ -33,6 +33,19 @@ DB_PATH = PROJECT_ROOT / "db" / "qualitative.db"
 # default; verifikasi memeriksanya langsung dari metadata basis data.
 STATUS_DEFAULT_TARGETS = ("codes", "categories")
 
+# Kolom stempel waktu yang harus berdefault ISO 8601, bukan CURRENT_TIMESTAMP
+# bawaan SQLite, agar kronologi lintas tabel dapat diurutkan sebagai string.
+TIMESTAMP_COLUMNS = {
+    "documents": "added_at",
+    "method_runs": "started_at",
+    "codes": "created_at",
+    "categories": "created_at",
+    "memos": "created_at",
+    "audit_log": "called_at",
+    "validation_events": "reviewed_at",
+}
+ISO_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$")
+
 
 def parse_expected_objects(schema_sql: str) -> tuple[list[str], list[str]]:
     """Mengambil daftar nama tabel dan indeks yang dideklarasikan pada DDL."""
@@ -52,6 +65,21 @@ def list_objects(conn: sqlite3.Connection, kind: str) -> list[str]:
         (kind,),
     ).fetchall()
     return [row[0] for row in rows]
+
+
+def column_default(conn: sqlite3.Connection, table: str, column: str) -> str | None:
+    for row in conn.execute(f"PRAGMA table_info({table})"):
+        if row[1] == column:
+            return row[4]
+    return None
+
+
+def probe_timestamp_default(conn: sqlite3.Connection, table: str, column: str) -> str | None:
+    """Mengambil nilai yang benar-benar dihasilkan DEFAULT, tanpa menyisakan baris."""
+    expression = column_default(conn, table, column)
+    if not expression:
+        return None
+    return conn.execute(f"SELECT {expression}").fetchone()[0]
 
 
 def status_default(conn: sqlite3.Connection, table: str) -> str | None:
@@ -108,6 +136,16 @@ def verify(conn: sqlite3.Connection, schema_sql: str) -> bool:
         label = f"{table}.status DEFAULT"
         print(f"  {label:<36}: {default} ({'sesuai' if correct else 'TIDAK SESUAI'})")
 
+    print()
+    print("Format stempel waktu (nilai yang dihasilkan DEFAULT):")
+    for table, column in TIMESTAMP_COLUMNS.items():
+        produced = probe_timestamp_default(conn, table, column)
+        conforms = bool(produced) and bool(ISO_PATTERN.match(str(produced)))
+        ok = ok and conforms
+        label = f"{table}.{column}"
+        print(f"  {label:<32}: {produced} ({'ISO 8601' if conforms else 'TIDAK SESUAI'})")
+
+    print()
     violations = conn.execute("PRAGMA foreign_key_check").fetchall()
     print(f"  {'pelanggaran foreign key':<36}: {len(violations)}")
     if violations:

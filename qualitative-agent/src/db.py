@@ -9,10 +9,29 @@ memakai ``connect()`` di sini alih-alih memanggil ``sqlite3.connect`` langsung.
 from __future__ import annotations
 
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_ROOT / "db" / "qualitative.db"
+
+# Seluruh stempel waktu pada basis data ini berformat ISO 8601 dengan penanda
+# zona eksplisit, baik yang ditulis Python maupun yang lahir dari DEFAULT pada
+# skema. CURRENT_TIMESTAMP bawaan SQLite sengaja tidak dipakai karena bentuknya
+# ('YYYY-MM-DD HH:MM:SS', tanpa zona) tidak dapat diurutkan bersama nilai ISO
+# sebagai string, padahal rekonstruksi kronologi audit trail lintas tabel
+# menuntut perbandingan semacam itu.
+ISO_DEFAULT_SQL = "(strftime('%Y-%m-%dT%H:%M:%S+00:00','now'))"
+
+
+def utc_now_iso() -> str:
+    """Stempel waktu UTC berformat ISO 8601, presisi detik.
+
+    Padanan Python dari ISO_DEFAULT_SQL. Setiap modul yang menulis kolom
+    stempel waktu secara eksplisit wajib memakai fungsi ini agar formatnya
+    identik dengan nilai yang dihasilkan DEFAULT pada skema.
+    """
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def connect(db_path: Path | str | None = None) -> sqlite3.Connection:
