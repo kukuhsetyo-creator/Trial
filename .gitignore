@@ -12,3 +12,8 @@ yarn-error.log*
 
 # basis data runtime agen kualitatif
 qualitative-agent/db/qualitative.db
+
+# jejak audit mentah (salinan portabel dari tabel audit_log)
+qualitative-agent/audit_trail/*.jsonl
+__pycache__/
+*.pyc

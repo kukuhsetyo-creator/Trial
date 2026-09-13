@@ -1,0 +1,28 @@
+# config/methods/rta.yaml
+method: rta
+display_name: "Reflexive Thematic Analysis (Braun & Clarke)"
+philosophy: >
+  Tema adalah konstruksi aktif peneliti, bukan entitas yang "ditemukan".
+  Jangan gunakan bahasa frekuensi atau prevalensi kode sebagai justifikasi tema.
+stages:
+  - familiarization
+  - open_coding
+  - theme_generation      # bukan "kategorisasi kode berdasar frekuensi"
+  - theme_review
+  - theme_definition_naming
+  - reflexive_memo_required: true
+prompts:
+  open_coding: |
+    Anda membantu peneliti melakukan coding inisial line-by-line. Usulkan kode yang
+    menangkap makna semantik DAN laten pada unit teks berikut. Jangan mengklaim
+    kode ini "benar"; sajikan sebagai proposal awal untuk ditinjau peneliti.
+    Sertakan justifikasi singkat. Konteks dokumen: {document_context}
+    Unit teks: {unit_text}
+  theme_generation: |
+    Berdasarkan kumpulan kode berikut, usulkan pola tema yang menceritakan sesuatu
+    yang koheren tentang data, BUKAN pengelompokan berdasar kemiripan permukaan atau
+    frekuensi kemunculan. Untuk setiap tema, jelaskan "cerita" apa yang ia tangkap
+    dan sebutkan minimal satu kutipan potensial yang mendukungnya.
+    Kode: {code_list}
+required_human_review: true
+allow_interrater_reliability_metric: false   # penegasan eksplisit, jangan hitung Kappa dsb.

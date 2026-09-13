@@ -1,0 +1,8 @@
+anthropic>=0.40.0
+chromadb
+pymupdf
+python-docx
+streamlit
+pyyaml
+python-dotenv
+pandas
