@@ -58,7 +58,7 @@ if configs:
             {
                 "method": nama,
                 "display_name": cfg.get("display_name", ""),
-                "tahap": len(cfg.get("stages", []) or []),
+                "tahap": len(cfg.get("stage_names", []) or []),
                 "prompt tersedia": ", ".join(sorted((cfg.get("prompts") or {}).keys())) or "-",
                 "wajib tinjauan manusia": cfg.get("required_human_review"),
                 "izinkan metrik antarpenilai": cfg.get("allow_interrater_reliability_metric"),
@@ -74,10 +74,11 @@ else:
 st.subheader("Status pembangunan")
 st.markdown(
     """
-Halaman yang sudah berfungsi penuh adalah **Memo** (memo tulisan peneliti),
-**Audit Trail**, dan **Ekspor** untuk data yang sudah ada di basis data.
-Halaman **Ingest**, **Open Coding**, dan **Kategorisasi** menunggu modul
-pendukungnya masing-masing dan menyatakan hal itu secara eksplisit alih-alih
-menampilkan antarmuka yang tidak terhubung ke apa pun.
+Halaman **Ingest**, **Coding Inisial**, **Memo**, **Audit Trail**, dan **Ekspor**
+sudah berfungsi. Halaman **Kategorisasi** menunggu modul agregasi tema dan
+antrean peninjauan, dan menyatakan hal itu secara eksplisit alih-alih menampilkan
+antarmuka yang tidak terhubung ke apa pun; tombol validasi sengaja belum dibuat
+agar perubahan status tidak pernah menempuh jalan pintas di luar
+`src/validation/review_queue.py`.
 """
 )

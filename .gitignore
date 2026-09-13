@@ -17,3 +17,9 @@ qualitative-agent/db/qualitative.db
 qualitative-agent/audit_trail/*.jsonl
 __pycache__/
 *.pyc
+
+# data penelitian: mentah dan hasil antara tidak masuk kendali versi
+qualitative-agent/data/raw/*
+!qualitative-agent/data/raw/.gitkeep
+qualitative-agent/data/processed/*
+!qualitative-agent/data/processed/.gitkeep

@@ -1,0 +1,51 @@
+# config/methods/grounded_theory.yaml
+method: grounded_theory
+display_name: "Grounded Theory (Strauss & Corbin)"
+philosophy: >
+  Analisis bersifat siklis, bukan linear. Pengumpulan data berikutnya ditentukan oleh
+  kategori yang sedang terbentuk, perbandingan konstan dijalankan ulang setiap kali unit
+  baru masuk, dan saturasi adalah klaim yang dievaluasi, bukan kondisi terminasi yang
+  diasumsikan tercapai ketika data habis.
+stages:
+  - open_coding
+  - constant_comparison
+  - axial_coding
+  - theoretical_sampling
+  - core_category_selection
+  - saturation_check
+  - iterative: true
+prompts:
+  open_coding: |
+    Anda membantu peneliti melakukan open coding pada satu unit teks. Usulkan kode yang
+    menamai PROSES atau TINDAKAN, sedapat mungkin dalam bentuk gerund, dan pertahankan
+    istilah partisipan sendiri sebagai kode in-vivo bila istilah itu bermuatan. Untuk
+    setiap kode, sebutkan properti yang tampak dan dimensi variasinya bila terlihat.
+    Sajikan sebagai proposal untuk ditinjau peneliti. Sertakan justifikasi singkat.
+    Konteks dokumen: {document_context}
+    Unit teks: {unit_text}
+  constant_comparison: |
+    Bandingkan unit baru berikut dengan kategori yang sudah terbentuk. Untuk setiap
+    kategori, nyatakan apakah unit ini menguatkan, memperluas properti/dimensinya,
+    menantangnya, atau tidak relevan. Bila unit ini tidak tertampung oleh kategori mana
+    pun, usulkan kategori baru dan katakan demikian secara eksplisit alih-alih memaksakan
+    kecocokan.
+    Kategori yang ada: {existing_categories}
+    Unit baru: {unit_text}
+  axial_coding: |
+    Usulkan relasi antarkategori berikut menggunakan tipe relasi: causal, contextual,
+    intervening, strategy, consequence. Untuk setiap relasi, sebutkan dasar datanya.
+    Jangan mengusulkan relasi yang hanya masuk akal secara teoretis namun tidak
+    ditopang unit mana pun.
+    Kategori: {categories}
+  theoretical_sampling: |
+    Berdasarkan keadaan kategori saat ini, nyatakan data apa yang perlu dikumpulkan
+    berikutnya dan mengapa: properti mana yang masih tipis, dimensi mana yang belum
+    teruji, dan kasus seperti apa yang paling mungkin menantang kategori yang ada.
+    Keadaan kategori: {category_state}
+  saturation_check: |
+    Nilai apakah kategori berikut telah jenuh. Saturasi berarti unit baru tidak lagi
+    menambah properti atau dimensi, bukan berarti data telah habis. Bila bukti belum
+    memadai untuk mengklaim saturasi, katakan demikian.
+    Kategori beserta unit pendukungnya: {category_evidence}
+required_human_review: true
+allow_interrater_reliability_metric: false

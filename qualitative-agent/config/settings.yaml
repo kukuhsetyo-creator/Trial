@@ -1,0 +1,15 @@
+# Pengaturan global. Nilai yang spesifik per metode berada di config/methods/*.yaml
+# dan selalu menang atas nilai di berkas ini.
+model: claude-sonnet-5
+max_tokens: 2048
+
+segmentation:
+  # Unit makna, bukan pemotongan kalimat buta. Ambang di bawah hanya menjadi
+  # pagar terhadap unit yang terlalu panjang untuk dikodekan sebagai satu makna,
+  # bukan aturan pemotongan utama.
+  max_chars_per_unit: 1200
+  min_chars_per_unit: 40
+
+paths:
+  raw: data/raw
+  processed: data/processed

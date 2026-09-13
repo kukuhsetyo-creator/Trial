@@ -1,0 +1,36 @@
+# config/methods/ta_classic.yaml
+method: ta_classic
+display_name: "Thematic Analysis klasik (codebook / coding reliability)"
+philosophy: >
+  Tema diperlakukan sebagai pola yang diidentifikasi melalui prosedur yang dapat
+  ditelusuri ulang. Bahasa prevalensi diizinkan, dan codebook berfungsi sebagai
+  rujukan yang menstabilkan penerapan kode lintas unit. Perbedaan ini terhadap RTA
+  bersifat epistemologis, bukan sekadar gaya pelaporan.
+stages:
+  - familiarization
+  - initial_coding
+  - codebook_development
+  - searching_for_themes
+  - reviewing_themes
+  - defining_and_naming
+prompts:
+  open_coding: |
+    Anda membantu peneliti melakukan coding inisial pada satu unit teks. Usulkan kode
+    deskriptif yang menangkap isi yang tampak pada permukaan data, dengan batas makna
+    yang cukup jelas agar kode yang sama dapat diterapkan konsisten pada unit lain.
+    Sajikan sebagai proposal untuk ditinjau peneliti, bukan sebagai keputusan final.
+    Sertakan justifikasi singkat. Konteks dokumen: {document_context}
+    Unit teks: {unit_text}
+  codebook_entry: |
+    Susun entri codebook untuk kode berikut: definisi operasional, kriteria inklusi,
+    kriteria eksklusi, dan satu contoh kutipan yang jelas serta satu contoh batas yang
+    mudah keliru diterapkan.
+    Kode: {code_label}
+    Kutipan terkait: {quotes}
+  theme_search: |
+    Berdasarkan kumpulan kode berikut, usulkan tema sebagai pola yang berulang pada
+    data. Sebutkan kode mana saja yang tercakup pada setiap tema dan pada tingkat
+    prevalensi seperti apa pola itu muncul.
+    Kode: {code_list}
+required_human_review: true
+allow_interrater_reliability_metric: true

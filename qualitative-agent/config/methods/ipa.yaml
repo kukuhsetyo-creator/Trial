@@ -1,0 +1,46 @@
+# config/methods/ipa.yaml
+method: ipa
+display_name: "Interpretative Phenomenological Analysis (Smith, Flowers & Larkin)"
+philosophy: >
+  Unit analisis adalah kasus, bukan korpus. Double hermeneutic menuntut pemahaman atas
+  dunia-hidup satu partisipan dituntaskan dalam kerangka partisipan itu sendiri sebelum
+  perbandingan lintas kasus dimulai. Jangan pernah menghasilkan GET dari korpus gabungan
+  tanpa melewati PET per partisipan.
+stages:
+  - reading_and_rereading
+  - exploratory_noting
+  - experiential_statements
+  - clustering_to_PET
+  - cross_case_to_GET
+  - idiographic_before_cross_case: true
+  - participant_id_required: true
+prompts:
+  open_coding: |
+    Anda membantu peneliti melakukan exploratory noting pada satu unit teks dari satu
+    partisipan. Hasilkan catatan pada tiga lapis yang terpisah dan jangan saling
+    dicampur: deskriptif (apa yang dikatakan partisipan), linguistik (pilihan kata,
+    metafora, jeda, keraguan, pengulangan), dan konseptual (pertanyaan interpretatif
+    yang dibangkitkan teks ini). Tetap berada dalam kerangka dunia-hidup partisipan ini;
+    jangan membandingkan dengan partisipan lain. Sajikan sebagai proposal untuk ditinjau.
+    Sertakan pada setiap catatan lapisannya pada field coding_level dengan nilai
+    'descriptive', 'linguistic', atau 'conceptual'.
+    Konteks dokumen: {document_context}
+    Unit teks: {unit_text}
+  experiential_statements: |
+    Ubah catatan berikut menjadi pernyataan eksperiensial yang ringkas, yang tetap
+    berakar pada teks partisipan dan tidak menaikkan abstraksi lebih cepat daripada
+    yang ditopang data.
+    Catatan: {notes}
+  personal_experiential_themes: |
+    Kelompokkan pernyataan eksperiensial berikut menjadi Personal Experiential Themes
+    untuk partisipan {participant_id} SAJA. Jangan merujuk partisipan lain. Jelaskan
+    keterhubungan antarpernyataan yang membentuk setiap tema.
+    Pernyataan: {statements}
+  group_experiential_themes: |
+    Setelah seluruh kasus dianalisis secara idiografis, usulkan Group Experiential
+    Themes dari kumpulan PET berikut. Untuk setiap GET, sebutkan partisipan mana yang
+    berkontribusi, dan tandai secara eksplisit perbedaan atau kasus yang tidak sejalan
+    alih-alih meratakannya menjadi kesamaan.
+    PET per partisipan: {pet_by_participant}
+required_human_review: true
+allow_interrater_reliability_metric: false

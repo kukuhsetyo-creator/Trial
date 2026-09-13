@@ -13,7 +13,6 @@ import sys
 from pathlib import Path
 
 import streamlit as st
-import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -40,18 +39,14 @@ def require_db() -> bool:
 
 
 def load_method_configs() -> dict[str, dict]:
-    configs: dict[str, dict] = {}
-    if not METHODS_DIR.exists():
-        return configs
-    for path in sorted(METHODS_DIR.glob("*.yaml")):
-        try:
-            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        except yaml.YAMLError as exc:
-            st.warning(f"Konfigurasi `{path.name}` gagal diurai: {exc}")
-            continue
-        if data.get("method"):
-            configs[data["method"]] = data
-    return configs
+    """Membungkus pemuat konfigurasi agar kesalahan tampil sebagai pesan, bukan traceback."""
+    from config.loader import ConfigError, load_all_method_configs
+
+    try:
+        return load_all_method_configs()
+    except ConfigError as exc:
+        st.error(f"Konfigurasi metode bermasalah: {exc}")
+        return {}
 
 
 def table_count(table: str) -> int:
