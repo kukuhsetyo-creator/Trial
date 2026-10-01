@@ -80,3 +80,22 @@ termasuk pemanggilan yang gagal total setelah seluruh percobaan retry habis.
 
 Pada RTA, hitungan frekuensi kode tidak pernah dikirim ke model saat pembentukan tema,
 dan permintaan metrik reliabilitas antarpenilai ditolak dengan pengecualian eksplisit.
+
+## Edisi peramban (HTML)
+
+`web/AgenKualitatif.html` adalah satu berkas yang berjalan langsung di peramban tanpa
+Python, peluncur, maupun pemasangan: klik dua kali, lalu isi kunci akses di halaman
+Pengaturan. Ia berdampingan dengan versi Python, mencakup alur RTA yang sama, dan
+menegakkan aturan `CLAUDE.md` yang sama (status hanya berubah lewat peninjauan, setiap
+pemanggilan AI tercatat, tanpa hitungan frekuensi di prompt tema, penamaan tema menuntut
+memo peneliti). Data tersimpan di IndexedDB peramban; kunci akses tidak pernah ikut
+dalam berkas cadangan. Format cadangan JSON memakai nama tabel dan kolom yang sama
+dengan skema SQLite.
+
+```bash
+python web/build_html.py   # menyusun ulang dari web/src/ dan web/vendor/
+CHROMIUM=/path/chrome RAW=data/raw node web/tests/browser_test.mjs   # perlu playwright-core
+```
+
+Pustaka yang disematkan: mammoth.js 1.8.0 (BSD-2-Clause) dan pdf.js 3.11.174
+(Apache-2.0); teks lisensinya ada di `web/vendor/`.
