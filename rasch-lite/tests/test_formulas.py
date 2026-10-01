@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 
+from raschlite.core.analysis import STATUS_LABELS
 from raschlite.core.data import code_responses, prepare_data
 from raschlite.core.dimensionality import residual_pca, yen_q3
 from raschlite.core.fit import fit_statistics, point_measure, wilson_hilferty
@@ -201,7 +202,7 @@ def test_extreme_persons_receive_0_3_adjusted_measures(analyze):
     X[2, 4:] = 1.0
     res = analyze(X, "dichotomous", run_dif=False)
     p = res.persons
-    assert list(p.loc[[0, 1, 2], "status"]) == ["ekstrem minimum", "ekstrem maksimum", "ekstrem maksimum"]
+    assert list(p.loc[[0, 1, 2], "status"]) == [STATUS_LABELS[-1], STATUS_LABELS[1], STATUS_LABELS[1]]
     mom = moments(res.jmle.theta[:3], res.jmle.delta)
     obs = ~np.isnan(X[:3])
     exp_score = (mom.E * obs).sum(axis=1)

@@ -14,15 +14,20 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from .. import theme
 from ..gui import strings as S
 from ..interpret.narrative import STATUS_LABELS
 from .common import DECIMALS, column_label, dif_labels, generated_line, metadata, table_frame
 
-HEADER_FILL = PatternFill("solid", fgColor="E6E6E6")
-FLAG_FILL = PatternFill("solid", fgColor="FBE3D6")
-MUTED_FILL = PatternFill("solid", fgColor="F2F2F2")
-BOLD = Font(bold=True)
-STATUS_FILLS = {"hijau": "BFE6DA", "kuning": "FBF6C4", "merah": "F5C9AE", "abu": "E6E6E6"}
+def _hex(color: str) -> str:
+    return color.lstrip("#").upper()
+
+
+HEADER_FILL = PatternFill("solid", fgColor=_hex(theme.SAND))
+FLAG_FILL = PatternFill("solid", fgColor=_hex(theme.FLAG_ROW))
+MUTED_FILL = PatternFill("solid", fgColor=_hex(theme.BACKGROUND))
+BOLD = Font(bold=True, color=_hex(theme.INK))
+STATUS_FILLS = {k: _hex(v) for k, v in theme.STATUS_TINT.items()}
 
 
 def _cell_value(v):
@@ -91,7 +96,7 @@ def export_excel(res, interp, path: str | Path, source_name: str = "") -> Path:
     wb = Workbook()
     ws = wb.active
     ws.title = S.SHEETS["summary"]
-    ws.cell(row=1, column=1, value=S.REPORT_TITLE).font = Font(bold=True, size=14)
+    ws.cell(row=1, column=1, value=S.REPORT_TITLE).font = Font(bold=True, size=14, color=_hex(theme.NAVY))
     ws.cell(row=2, column=1, value=generated_line())
     r = 4
     for label, value in metadata(res, source_name):
@@ -99,14 +104,14 @@ def export_excel(res, interp, path: str | Path, source_name: str = "") -> Path:
         ws.cell(row=r, column=2, value=value)
         r += 1
     r += 1
-    ws.cell(row=r, column=1, value=S.SUMMARY_1MIN).font = Font(bold=True, size=12)
+    ws.cell(row=r, column=1, value=S.SUMMARY_1MIN).font = Font(bold=True, size=12, color=_hex(theme.BRONZE))
     rows = [[lt.title, STATUS_LABELS[lt.status], lt.sentence] for lt in interp.lights]
     fills = [PatternFill("solid", fgColor=STATUS_FILLS[lt.status]) for lt in interp.lights]
     r = _write_rows(ws, S.LIGHTS_HEAD, rows, start_row=r + 1, fills=fills) + 2
     for sec in interp.sections:
         if not sec.technical:
             continue
-        ws.cell(row=r, column=1, value=sec.title).font = Font(bold=True, size=12)
+        ws.cell(row=r, column=1, value=sec.title).font = Font(bold=True, size=12, color=_hex(theme.BRONZE))
         r = _write_rows(ws, S.TECH_HEAD, [[t.label.strip(), t.value, t.criterion] for t in sec.technical],
                         start_row=r + 1) + 2
     ws.column_dimensions["A"].width = 42

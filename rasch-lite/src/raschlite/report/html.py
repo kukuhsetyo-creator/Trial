@@ -6,7 +6,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from .. import APP_NAME, __version__
+from .. import APP_NAME, __version__, theme
 from ..gui import strings as S
 from ..interpret.glossary import GLOSSARY
 from ..plots import SPECS, available_charts, item_choices, render
@@ -78,7 +78,7 @@ def export_html(res, interp, path: str | Path, source_name: str = "", chart_dir:
         generated=generated_line(), meta=metadata(res, source_name), cautions=interp.cautions,
         lights=interp.lights, status_text=S.STATUS_TEXT, intro=interp.intro, sections=interp.sections,
         tech_head=S.TECH_HEAD, charts=charts, per_item_note=note, tables=tables,
-        glossary=list(GLOSSARY.values()), labels=labels,
+        glossary=list(GLOSSARY.values()), labels=labels, t=theme,
     )
     path.write_text(html, encoding="utf-8")
     return path

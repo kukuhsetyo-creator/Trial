@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .. import APP_NAME, __version__
+from .. import APP_NAME, __version__, theme
 from ..gui import strings as S
 from ..interpret.glossary import GLOSSARY
 from ..plots import SPECS, render
@@ -20,7 +20,7 @@ PDF_PER_ITEM_LIMIT = 12
 # QTextDocument.print_ menambah margin 2 cm di dalam margin halaman (5 mm), sehingga lebar area
 # teks A4 sekitar 160 mm, kira-kira 600 piksel tata letak pada 96 dpi; 560 piksel selalu muat.
 IMAGE_WIDTH = 560
-STATUS_COLORS = {"hijau": "#009E73", "kuning": "#C8B400", "merah": "#D55E00", "abu": "#9E9E9E"}
+STATUS_COLORS = dict(theme.STATUS)
 _APP = None
 
 
@@ -96,7 +96,7 @@ def export_pdf(res, interp, path: str | Path, source_name: str = "", chart_dir: 
         meta=metadata(res, source_name), cautions=interp.cautions, lights=interp.lights,
         lights_head=S.LIGHTS_HEAD, status_text=S.STATUS_TEXT, colors=STATUS_COLORS, intro=interp.intro,
         sections=interp.sections, tech_head=S.TECH_HEAD, charts=charts, per_item_note=note, tables=tables,
-        glossary=list(GLOSSARY.values()), labels=labels,
+        glossary=list(GLOSSARY.values()), labels=labels, t=theme,
     )
     doc.setHtml(html)
     for name, image in images:

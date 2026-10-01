@@ -1,14 +1,25 @@
-"""Ekspor hasil: workbook Excel, laporan HTML mandiri, laporan PDF, dan grafik."""
+"""Ekspor hasil: workbook Excel, laporan HTML mandiri, laporan PDF, dan grafik.
 
-from .excel import export_excel
-from .export import ExportCancelled, export_all
-from .html import export_html
+Submodul dimuat saat pertama kali dipakai (PEP 562). Dengan begitu GUI dapat mengimpor
+``raschlite.report.common`` saat startup tanpa ikut memuat matplotlib, sehingga jendela
+utama tampil lebih cepat; matplotlib baru dimuat ketika hasil analysis ditampilkan.
+"""
 
-__all__ = ["export_excel", "export_html", "export_all", "ExportCancelled", "export_pdf"]
+from importlib import import_module
+
+_EXPORTS = {
+    "export_excel": ".excel",
+    "export_html": ".html",
+    "export_all": ".export",
+    "ExportCancelled": ".export",
+    "export_pdf": ".pdf",
+}
+__all__ = list(_EXPORTS)
 
 
-def export_pdf(*args, **kwargs):
-    """Laporan PDF (memerlukan PySide6/QtGui; diimpor saat dipanggil)."""
-    from .pdf import export_pdf as _export_pdf
-
-    return _export_pdf(*args, **kwargs)
+def __getattr__(name: str):
+    if name in _EXPORTS:
+        value = getattr(import_module(_EXPORTS[name], __name__), name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

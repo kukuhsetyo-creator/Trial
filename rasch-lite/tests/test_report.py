@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 from openpyxl import load_workbook
 
+from raschlite import theme
 from raschlite.core.analysis import run_analysis
 from raschlite.core.data import prepare_data, read_table
 from raschlite.gui import strings as S
@@ -51,14 +52,14 @@ def test_excel_has_one_sheet_per_table_with_numeric_cells(pcm, tmp_path):
         assert S.SHEETS[key] in wb.sheetnames, key
     ws = wb[S.SHEETS["items"]]
     headers = [c.value for c in ws[1]]
-    assert headers[0] == "Butir" and "Infit MNSQ" in headers and "Measure (logit)" in headers
+    assert headers[0] == S.COLUMNS["item"] and "Infit MNSQ" in headers and "Measure (logit)" in headers
     assert ws.max_row == len(res.items) + 1
     measure_col = headers.index("Measure (logit)") + 1
     assert isinstance(ws.cell(row=2, column=measure_col).value, float)
     assert ws.cell(row=2, column=measure_col).value == pytest.approx(res.items["measure"].iloc[0])
     cat = wb[S.SHEETS["categories"]]
     flagged_fill = {cat.cell(row=r, column=1).fill.fgColor.rgb for r in range(2, cat.max_row + 1)}
-    assert any(str(c).endswith("FBE3D6") for c in flagged_fill)
+    assert any(str(c).endswith(theme.FLAG_ROW.lstrip("#").upper()) for c in flagged_fill)
     summary_text = " ".join(str(c.value) for row in wb[S.SHEETS["summary"]].iter_rows() for c in row if c.value)
     for light in interp.lights:
         assert light.sentence in summary_text

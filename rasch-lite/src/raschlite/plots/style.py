@@ -1,12 +1,11 @@
-"""Gaya visual bersama: palet Okabe-Ito, font, sumbu tenang, dan ekspor.
+"""Gaya visual bersama grafik: palet deck CSPS (tervalidasi CVD), font, sumbu tenang, ekspor.
 
-Palet kategorikal memakai urutan tetap Okabe-Ito (Okabe & Ito, 2008) yang
-telah diperiksa dengan validator buta warna (CVD) skill dataviz: semua slot
-lolos; oranye, ungu-kemerahan, dan biru langit berkontras < 3:1 terhadap latar
-putih sehingga setiap grafik wajib memiliki legenda atau label langsung.
-Vermilion dicadangkan sebagai warna status "masalah" dan hijau kebiruan
-sebagai warna zona "baik", sehingga tidak dipakai sebagai warna seri pada
-grafik yang juga menampilkan status.
+Warna diambil dari :mod:`raschlite.theme`. Seri kategorikal memakai urutan tetap
+navy, ochre, sky, plum, sage yang lolos validator buta warna (CVD) skill dataviz
+(Delta E >= 10 untuk setiap pasangan bersebelahan pada deuteranopia). Ochre
+berkontras < 3:1 terhadap latar putih, sehingga setiap grafik wajib memiliki
+legenda atau label langsung. Rust dicadangkan sebagai warna status "masalah" dan
+sage sebagai zona "baik". Latar plot tetap putih bersih untuk publikasi.
 """
 
 from __future__ import annotations
@@ -19,37 +18,30 @@ from matplotlib import font_manager
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
 
-BLACK = "#000000"
-ORANGE = "#E69F00"
-SKY = "#56B4E9"
-GREEN = "#009E73"
-YELLOW = "#F0E442"
-BLUE = "#0072B2"
-VERMILLION = "#D55E00"
-PURPLE = "#CC79A7"
+from .. import theme
 
-#: Urutan seri tetap (tanpa vermilion yang dicadangkan untuk status). Urutan ini
-#: lolos validator CVD dengan Delta E >= 8 untuk setiap pasangan bersebelahan;
-#: hitam tidak dipakai sebagai seri karena gagal batas kroma.
-SERIES = [BLUE, ORANGE, GREEN, SKY, PURPLE]
-PROBLEM = VERMILLION
-GOOD_ZONE = GREEN
+PRIMARY = theme.NAVY_SERIES
+SECONDARY = theme.OCHRE
+SERIES = list(theme.SERIES)
+PROBLEM = theme.PROBLEM
+GOOD_ZONE = theme.GOOD_ZONE
 
-SURFACE = "#FFFFFF"
-INK = "#1F1F1F"
-INK_SECONDARY = "#4D4D4D"
-INK_MUTED = "#7A7A7A"
-GRID = "#E6E6E6"
-NEUTRAL = "#BDBDBD"
+SURFACE = theme.CHART_BG
+INK = theme.INK
+INK_SECONDARY = theme.INK_SECONDARY
+INK_MUTED = theme.INK_MUTED
+GRID = theme.CHART_GRID
+AXIS = theme.CHART_AXIS
+NEUTRAL = theme.NEUTRAL
+
+#: Peta warna divergen untuk Q3 (navy - krem netral - rust).
+DIVERGING = LinearSegmentedColormap.from_list("raschlite_div", theme.DIVERGING)
 
 FONT_CANDIDATES = ["Segoe UI", "DejaVu Sans", "Liberation Sans", "Arial"]
 
-#: Peta warna divergen (biru - abu netral - vermilion) untuk Q3.
-DIVERGING = LinearSegmentedColormap.from_list("raschlite_div", [BLUE, "#F2F2F2", VERMILLION])
-
 
 def category_colors(n: int) -> list:
-    """Warna untuk n kategori berurutan: Okabe-Ito bila n <= 5, selain itu ramp
+    """Warna untuk n kategori berurutan: palet seri bila n <= 5, selain itu ramp
     ordinal cividis (dirancang aman bagi buta warna) yang disertai label langsung."""
     if n <= len(SERIES):
         return SERIES[:n]
@@ -70,11 +62,12 @@ def rc() -> dict:
         "font.family": font_family(),
         "font.size": 9.5,
         "axes.titlesize": 12,
+        "axes.titlecolor": INK,
         "axes.titleweight": "bold",
         "axes.titlelocation": "left",
         "axes.labelsize": 9.5,
         "axes.labelcolor": INK_SECONDARY,
-        "axes.edgecolor": GRID,
+        "axes.edgecolor": AXIS,
         "axes.linewidth": 0.8,
         "axes.facecolor": SURFACE,
         "axes.grid": True,

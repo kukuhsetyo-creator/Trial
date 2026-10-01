@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QPushButton, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QMainWindow,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from . import strings as S
+from .style import stylesheet
 from .pages import ImportPage, ModelPage, ResultsPage, RunPage
 from .widgets import StepIndicator
 
@@ -14,6 +23,9 @@ IMPORT, MODEL, RUN, RESULTS = range(4)
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        app = QApplication.instance()
+        if app is not None:
+            app.setStyleSheet(stylesheet())
         self.setWindowTitle(S.APP_TITLE)
         self.resize(1200, 820)
         self.steps = StepIndicator(S.STEPS)
@@ -29,11 +41,13 @@ class MainWindow(QMainWindow):
         self.btn_back = QPushButton(S.BTN_BACK)
         self.btn_next = QPushButton(S.BTN_NEXT)
         self.btn_next.setDefault(True)
+        self.btn_next.setObjectName("primary")
         nav = QHBoxLayout()
         nav.addWidget(self.btn_back)
         nav.addStretch()
         nav.addWidget(self.btn_next)
         central = QWidget()
+        central.setObjectName("central")
         lay = QVBoxLayout(central)
         lay.addWidget(self.steps)
         lay.addWidget(self.stack, 1)

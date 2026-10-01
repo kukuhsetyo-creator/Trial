@@ -91,7 +91,7 @@ class ExportWorker(QObject):
 
     @Slot()
     def run(self) -> None:
-        from ..report import ExportCancelled, export_all
+        from ..report.export import ExportCancelled, export_all
 
         try:
             written = export_all(self.res, self.interp, self.folder, self.source_name,

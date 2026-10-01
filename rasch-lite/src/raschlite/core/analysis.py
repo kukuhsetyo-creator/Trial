@@ -20,7 +20,7 @@ from .jmle import JMLEResult, estimate
 from .model import kurtosis_term, moments
 from .reliability import cronbach_alpha, separation_statistics
 
-STATUS_LABELS = {0: "", -1: "ekstrem minimum", 1: "ekstrem maksimum", 2: "tidak diestimasi"}
+STATUS_LABELS = {0: "", -1: "Extreme (minimum)", 1: "Extreme (maximum)", 2: "Not estimated"}
 
 
 @dataclass

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from scipy import stats
+from scipy.special import stdtr
 
 from .jmle import EXTREME_SCORE_ADJUSTMENT, solve_item_locations
 
@@ -70,12 +70,13 @@ def dif_analysis(X: np.ndarray, theta: np.ndarray, tau: np.ndarray, m: np.ndarra
     t = contrast / joint
     with np.errstate(divide="ignore", invalid="ignore"):
         df = joint ** 4 / (A["se"] ** 4 / (A["n"] - 1) + B["se"] ** 4 / (B["n"] - 1))
-    p = 2.0 * stats.t.sf(np.abs(t), df)
+    # Peluang ekor distribusi t: stdtr(df, -x) = P(T > x), identik dengan scipy.stats.t.sf(x, df).
+    p = 2.0 * stdtr(df, -np.abs(t))
     flag = (np.abs(contrast) >= contrast_min) & (np.abs(t) > t_min)
     # Kategori ETS (Zwick, Thayer & Lewis, 1999; manual Winsteps):
     # C: |DIF| >= ets_c dan p(|DIF| <= ets_b) < .05 (uji satu sisi);
     # B: |DIF| >= ets_b dan p(|DIF| = 0) < .05; selain itu A.
-    p_beyond_b = stats.t.sf((np.abs(contrast) - ets_b) / joint, df)
+    p_beyond_b = stdtr(df, -(np.abs(contrast) - ets_b) / joint)
     ets = np.where((np.abs(contrast) >= ets_c) & (p_beyond_b < 0.05), "C",
                    np.where((np.abs(contrast) >= ets_b) & (p < 0.05), "B", "A"))
     table = pd.DataFrame({

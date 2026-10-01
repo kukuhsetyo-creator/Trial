@@ -1,5 +1,6 @@
 # Dependensi runtime (daftar terkunci). Versi dipin setelah diuji;
-# PySide6-Essentials berisi QtCore, QtGui, QtWidgets saja (tanpa WebEngine).
+# PySide6-Essentials = modul inti Qt tanpa paket Addons (jadi tanpa WebEngine); aplikasi hanya
+# mengimpor QtCore, QtGui, QtWidgets (QtSvg ikut dimuat oleh backend Qt matplotlib).
 numpy==2.4.6
 scipy==1.17.1
 pandas==3.0.6

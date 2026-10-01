@@ -113,7 +113,7 @@ def display_table(res, key: str, only_flagged: bool = False) -> dict | None:
 
 
 def flagged_items(res) -> list[str]:
-    """Butir yang perlu diperiksa: misfit, PTMEA negatif, kategori bermasalah, atau DIF."""
+    """Item yang perlu diperiksa: misfit, PTMEA negatif, kategori bermasalah, atau DIF."""
     names = set(res.items.loc[res.items["flag_misfit"] | res.items["flag_negative_ptmea"], "item"])
     if res.categories is not None and res.model == "pcm":
         cat = res.categories
@@ -137,7 +137,8 @@ def metadata(res, source_name: str = "") -> list[tuple[str, str]]:
         (m["items"], f"{s['n_items_estimated']} / {s['n_items_extreme']} (total {s['n_items']})"),
         (m["missing"], pct(s["missing_pct"], 1)),
         (m["convergence"], conv),
-        (m["criteria"], f"perubahan < {num(st['conv_change'], 3)} logit dan residual < {num(st['conv_resid'], 2)}"),
+        (m["criteria"], f"max logit change < {num(st['conv_change'], 3)} dan max score residual "
+                        f"< {num(st['conv_resid'], 2)}"),
         (m["fit_range"], f"{num(lo, 1)}-{num(hi, 1)}" + (" (mode ketat)" if st["strict_fit"] else "")),
         (m["bias"], num(st["bias_factor"], 4)),
         (m["dif"], "dianalisis" if res.dif is not None else "tidak dianalisis"),

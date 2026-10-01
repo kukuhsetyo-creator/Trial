@@ -11,6 +11,7 @@ import pytest
 from raschlite.core.analysis import run_analysis
 from raschlite.core.data import prepare_data, read_table
 from raschlite.plots import CHARTS, SPECS, available_charts, item_choices, render, render_gallery, save_figure
+from raschlite.plots import style as st
 
 SAMPLE_DIR = Path(__file__).resolve().parents[1] / "src" / "raschlite" / "resources" / "sample_data"
 SRC = Path(__file__).resolve().parents[1] / "src"
@@ -78,7 +79,7 @@ def test_render_gallery_exports_every_chart(results, tmp_path):
 def test_disordered_threshold_highlighted_in_red(results):
     fig = render(results["pcm"], "category_curves", "A09")
     colors = {line.get_color().lower() for line in fig.axes[0].get_lines()}
-    assert "#d55e00" in colors
+    assert st.PROBLEM.lower() in colors
 
 
 def test_plots_and_interpret_do_not_import_qt():

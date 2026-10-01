@@ -31,10 +31,10 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from scipy import stats
+from scipy.special import ndtri
 
-ALL_ITEMS = "(semua item)"
-_Z_ONE_SIDED_05 = float(stats.norm.ppf(0.95))
+ALL_ITEMS = "(all items)"
+_Z_ONE_SIDED_05 = float(ndtri(0.95))  # kuantil normal baku 0,95
 
 
 def _category_rows(item: str, labels: list[str], x: np.ndarray, diff: np.ndarray, z2_obs: np.ndarray,

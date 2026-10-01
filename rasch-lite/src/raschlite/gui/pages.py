@@ -37,14 +37,16 @@ from ..interpret.glossary import GLOSSARY, tooltip
 from ..interpret.narrative import num, pct
 from ..report.common import DECIMALS, dif_labels, table_frame
 from ..resources import SAMPLES, sample_path
+from .. import theme as T
 from . import strings as S
+from .style import label_style, title_style
 from .widgets import Banner, ChartPanel, Collapsible, TrafficLight, make_table, tech_table
 from .worker import AnalysisWorker, start_worker
 
 
 def _title(text: str) -> QLabel:
-    lab = QLabel(text)
-    lab.setStyleSheet("font-size:16pt;font-weight:bold;color:#1F1F1F;")
+    lab = QLabel(text.upper())
+    lab.setStyleSheet(title_style())
     return lab
 
 
@@ -274,7 +276,7 @@ class ModelPage(QWidget):
             self.group.addButton(r)
             bl.addWidget(r)
             d = QLabel(S.MODEL_DESC[key])
-            d.setStyleSheet("color:#4D4D4D;margin-left:24px;")
+            d.setStyleSheet(f"color:{T.INK_SECONDARY};margin-left:24px;")
             d.setWordWrap(True)
             bl.addWidget(d)
         lo, hi = rules.MNSQ_STRICT
@@ -444,7 +446,7 @@ class ResultsPage(QWidget):
         s = res.summary
         conv = (S.CONVERGED_OK if res.converged else S.CONVERGED_NO).format(n=s["iterations"])
         header = QLabel(S.RESULT_HEADER.format(model=interp.model_name, n=s["n_persons"], k=s["n_items"], conv=conv))
-        header.setStyleSheet("font-weight:bold;" + ("" if res.converged else "color:#D55E00;"))
+        header.setStyleSheet("font-weight:bold;" + (label_style() if res.converged else f"color:{T.PROBLEM};"))
         self.tabs = QTabWidget()
         self.chart_panels: dict[int, ChartPanel] = {}
         self.tables: dict[str, object] = {}
@@ -459,6 +461,7 @@ class ResultsPage(QWidget):
         self.chart_panels[self.tabs.addTab(self.charts, S.TAB_CHARTS)] = self.charts
         self.tabs.addTab(self._glossary_tab(), S.TAB_GLOSSARY)
         self.btn_export = QPushButton(S.BTN_EXPORT)
+        self.btn_export.setObjectName("primary")
         self.export_progress = QProgressBar()
         self.export_progress.hide()
         self.export_banner = Banner()
@@ -562,7 +565,7 @@ class ResultsPage(QWidget):
             v.addWidget(_para(p))
         for sec in self.interp.sections:
             head = QLabel(f"<span style='color:{_dot(sec.status)}'>●</span> <b>{html.escape(sec.title)}</b>")
-            head.setStyleSheet("font-size:12pt;margin-top:10px;")
+            head.setStyleSheet("font-size:12pt;margin-top:12px;")
             v.addWidget(head)
             for p in sec.paragraphs:
                 v.addWidget(_para(p))
@@ -578,7 +581,7 @@ class ResultsPage(QWidget):
                 bl.addWidget(tech_table(sec.technical))
                 if sec.references:
                     refs = _para(S.REFERENCES + ":\n" + "\n".join("• " + r for r in sec.references))
-                    refs.setStyleSheet("color:#4D4D4D;")
+                    refs.setStyleSheet(f"color:{T.INK_SECONDARY};")
                     bl.addWidget(refs)
                 v.addWidget(Collapsible(box))
         v.addStretch()
@@ -593,7 +596,7 @@ class ResultsPage(QWidget):
         w = QWidget()
         v = QVBoxLayout(w)
         hint = QLabel(S.TABLE_HINT)
-        hint.setStyleSheet("color:#4D4D4D;")
+        hint.setStyleSheet(f"color:{T.INK_MUTED};")
         v.addWidget(hint)
         v.addWidget(view, 1)
         return w

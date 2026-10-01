@@ -27,14 +27,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .. import theme as T
 from ..interpret.glossary import tooltip
 from ..report.common import fmt_value
 from . import strings as S
 
 SORT_ROLE = Qt.ItemDataRole.UserRole + 1
-FLAG_BG = QColor("#FBE3D6")  # vermilion sangat pucat: baris yang perlu diperiksa
-MUTED_BG = QColor("#F2F2F2")  # baris ekstrem / tidak diestimasi
-STATUS_COLORS = {"hijau": "#009E73", "kuning": "#F0E442", "merah": "#D55E00", "abu": "#BDBDBD"}
+FLAG_BG = QColor(T.FLAG_ROW)  # terracotta pucat: baris yang perlu diperiksa
+MUTED_BG = QColor(T.MUTED_ROW)  # baris skor ekstrem / tidak diestimasi
+STATUS_COLORS = dict(T.STATUS)
 
 
 class DataFrameModel(QAbstractTableModel):
@@ -114,11 +115,8 @@ def make_table(df: pd.DataFrame, columns: list[str], flag_rows=None, muted_rows=
 class Banner(QLabel):
     """Pesan sebaris (info / peringatan / galat) yang tidak memblokir alur."""
 
-    STYLES = {
-        "info": "background:#EAF3FA;border:1px solid #BBD7EC;color:#1F1F1F;",
-        "warning": "background:#FFF7D6;border:1px solid #E9D98A;color:#1F1F1F;",
-        "error": "background:#FBE3D6;border:1px solid #E7B394;color:#1F1F1F;",
-    }
+    STYLES = {level: f"background:{bg};border:1px solid {border};color:{T.INK};"
+              for level, (bg, border) in T.BANNER.items()}
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -128,7 +126,7 @@ class Banner(QLabel):
 
     def show_message(self, text: str, level: str = "info") -> None:
         self.setText(text)
-        self.setStyleSheet(self.STYLES[level] + "padding:8px;border-radius:4px;")
+        self.setStyleSheet(self.STYLES[level] + "padding:8px;border-radius:8px;")
         self.setProperty("level", level)
         self.show()
 
@@ -155,11 +153,13 @@ class StepIndicator(QWidget):
     def set_current(self, k: int) -> None:
         for i, lab in enumerate(self._labels):
             if i == k:
-                lab.setStyleSheet("background:#0072B2;color:white;font-weight:bold;border-radius:4px;")
+                lab.setStyleSheet(f"background:{T.NAVY};color:{T.NAVY_TEXT};font-weight:bold;border-radius:8px;"
+                                  "letter-spacing:1px;")
             elif i < k:
-                lab.setStyleSheet("background:#D9EAF5;color:#1F1F1F;border-radius:4px;")
+                lab.setStyleSheet(f"background:{T.SAND};color:{T.INK};border-radius:8px;")
             else:
-                lab.setStyleSheet("background:#F2F2F2;color:#7A7A7A;border-radius:4px;")
+                lab.setStyleSheet(f"background:{T.CARD};color:{T.INK_MUTED};border:1px solid {T.LINE};"
+                                  "border-radius:8px;")
 
 
 class TrafficLight(QFrame):
@@ -171,8 +171,10 @@ class TrafficLight(QFrame):
         lay.setContentsMargins(4, 4, 4, 4)
         dot = QLabel()
         dot.setFixedSize(18, 18)
-        dot.setStyleSheet(f"background:{STATUS_COLORS[status]};border-radius:9px;border:1px solid #7A7A7A;")
-        head = QLabel(f"<b>{title}</b><br><span style='color:#4D4D4D'>{S.STATUS_TEXT[status]}</span>")
+        self.setObjectName("light")
+        self.setStyleSheet(f"QFrame#light{{background:{T.CARD};border:1px solid {T.LINE};border-radius:10px;}}")
+        dot.setStyleSheet(f"background:{STATUS_COLORS[status]};border-radius:9px;border:1px solid {T.INK_MUTED};")
+        head = QLabel(f"<b>{title}</b><br><span style='color:{T.INK_MUTED}'>{S.STATUS_TEXT[status]}</span>")
         head.setFixedWidth(150)
         if tip:
             head.setToolTip(tip)
@@ -192,7 +194,7 @@ class Collapsible(QWidget):
         self.button = QToolButton()
         self.button.setText(S.TECH_SHOW)
         self.button.setCheckable(True)
-        self.button.setStyleSheet("QToolButton{border:none;color:#0072B2;}")
+        self.button.setStyleSheet(f"QToolButton{{border:none;color:{T.BRONZE};font-weight:600;}}")
         self.content = content
         content.setVisible(False)
         lay = QVBoxLayout(self)
@@ -243,7 +245,7 @@ class ChartPanel(QWidget):
         self.btn_png = QPushButton(S.BTN_SAVE_PNG)
         self.btn_svg = QPushButton(S.BTN_SAVE_SVG)
         self.saved = QLabel("")
-        self.saved.setStyleSheet("color:#4D4D4D;")
+        self.saved.setStyleSheet(f"color:{T.INK_SECONDARY};")
         top = QHBoxLayout()
         if len(self.specs) > 1:
             top.addWidget(QLabel(S.LBL_CHART))

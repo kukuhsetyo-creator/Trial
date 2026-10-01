@@ -1,7 +1,9 @@
-"""Katalog pesan engine statistik (bahasa Indonesia).
+"""Katalog pesan engine statistik.
 
 Seluruh teks yang dihasilkan ``core`` dan dapat sampai ke pengguna dipusatkan
-di sini agar mudah diterjemahkan. Placeholder memakai ``str.format``.
+di sini agar mudah diterjemahkan. Penjelasan berbahasa Indonesia, sedangkan istilah
+teknis Rasch (item, person, measure, extreme score, threshold, dan sebagainya)
+dipertahankan dalam bahasa Inggris. Placeholder memakai ``str.format``.
 """
 
 UNSUPPORTED_FILE = "Format berkas {suffix} tidak didukung. Gunakan .xlsx atau .csv."
@@ -16,24 +18,24 @@ NON_INTEGER = (
 )
 BAD_VALUE_EXAMPLE = "baris {row} kolom '{col}' berisi '{value}'"
 ITEM_NO_VARIANCE = (
-    "Item berikut tidak memiliki variasi jawaban (semua responden memberi jawaban "
+    "Item berikut tidak memiliki variasi jawaban (semua person memberi jawaban "
     "yang sama atau kolom kosong) dan dikeluarkan dari analisis: {items}."
 )
 TOO_FEW_VALID_ITEMS = "Setelah item tanpa variasi dikeluarkan, tersisa kurang dari dua item."
-PERSON_NO_RESPONSE = "{n} responden tidak memiliki satu pun jawaban dan dikeluarkan dari analisis."
+PERSON_NO_RESPONSE = "{n} person tidak memiliki satu pun jawaban dan dikeluarkan dari analisis."
 PERSON_HEAVY_MISSING = (
-    "{n} responden memiliki lebih dari 50% jawaban kosong (contoh: {examples}). "
-    "Measure mereka tetap dihitung tetapi kurang presisi."
+    "{n} person memiliki lebih dari 50% jawaban kosong (contoh: {examples}). "
+    "Measure mereka tetap dihitung tetapi kurang presisi (SE lebih besar)."
 )
 DIF_GROUP_LEVELS = (
     "Kolom grup '{col}' memiliki {k} kategori. Analisis DIF hanya dijalankan bila "
     "kolom grup memiliki tepat 2 kategori, sehingga DIF dinonaktifkan."
 )
-DIF_GROUP_MISSING = "{n} responden tidak memiliki nilai grup dan tidak diikutkan dalam analisis DIF."
-DICHOTOMOUS_RECODE = "Data dikotomus dikodekan ulang: nilai {lo} menjadi 0 dan nilai {hi} menjadi 1."
+DIF_GROUP_MISSING = "{n} person tidak memiliki nilai grup dan tidak diikutkan dalam analisis DIF."
+DICHOTOMOUS_RECODE = "Data dichotomous dikodekan ulang: nilai {lo} menjadi 0 dan nilai {hi} menjadi 1."
 RECOMMEND_DICHOTOMOUS = (
-    "Semua jawaban hanya memiliki dua nilai (misalnya benar/salah), sehingga model "
-    "Rasch dikotomus dipakai."
+    "Semua jawaban hanya memiliki dua nilai (misalnya benar/salah), sehingga "
+    "Dichotomous Rasch Model dipakai."
 )
 RECOMMEND_RSM = (
     "Semua item memakai rentang skala yang sama ({lo} sampai {hi}). Rating Scale "
@@ -48,61 +50,61 @@ RECOMMEND_PCM = (
     "tidak seragam."
 )
 RANGE_EXAMPLE = "{items}: {lo}-{hi}"
-NOT_DICHOTOMOUS = "Model dikotomus hanya dapat dipakai bila data memiliki tepat dua nilai."
+NOT_DICHOTOMOUS = "Dichotomous Rasch Model hanya dapat dipakai bila data memiliki tepat dua nilai."
 UNUSED_CATEGORY_GLOBAL = (
-    "Kategori {cats} tidak pernah dipakai responden (rentang data {lo}-{hi}). "
+    "Category {cats} tidak pernah dipakai person (rentang data {lo}-{hi}). "
     "Kategori dikodekan ulang menjadi bilangan berurutan tanpa kategori kosong."
 )
 UNUSED_CATEGORY_ITEM = (
-    "Item {item} tidak pernah memakai kategori {cats}; item ini dianalisis dengan "
+    "Item {item} tidak pernah memakai category {cats}; item ini dianalisis dengan "
     "{k} kategori yang benar-benar terpakai."
 )
 UNUSED_CATEGORY_ITEM_RSM = (
-    "Item {item} tidak pernah memakai kategori {cats}. Pada RSM struktur kategori "
+    "Item {item} tidak pernah memakai category {cats}. Pada RSM category structure "
     "dipakai bersama, sehingga item ini tetap dianalisis dengan skala penuh."
 )
 COLLAPSE_RSM = (
-    "Kategori ujung hanya dipakai oleh responden berskor ekstrem sehingga threshold-nya "
+    "Kategori ujung hanya dipakai oleh person dengan extreme score sehingga threshold-nya "
     "tidak dapat diestimasi. Kategori digabung menjadi: {cats}."
 )
 COLLAPSE_PCM = (
-    "Item {item}: kategori ujung hanya dipakai oleh responden berskor ekstrem sehingga "
+    "Item {item}: kategori ujung hanya dipakai oleh person dengan extreme score sehingga "
     "threshold-nya tidak dapat diestimasi. Kategori digabung menjadi: {cats}."
 )
 PCM_EXTREME_ITEM = (
-    "Item berikut hanya bervariasi pada responden berskor ekstrem sehingga struktur "
-    "kategorinya tidak dapat diestimasi pada PCM, dan dikeluarkan: {items}."
+    "Item berikut hanya bervariasi pada person dengan extreme score sehingga "
+    "category structure-nya tidak dapat diestimasi pada PCM, dan dikeluarkan: {items}."
 )
-ITEM_NOT_ESTIMABLE = "Item berikut tidak dijawab oleh responden non-ekstrem dan tidak dapat diestimasi: {items}."
+ITEM_NOT_ESTIMABLE = "Item berikut tidak dijawab oleh person non-extreme dan tidak dapat diestimasi: {items}."
 PERSON_NOT_ESTIMABLE = (
-    "{n} responden hanya menjawab item yang tidak dapat diestimasi sehingga measure "
+    "{n} person hanya menjawab item yang tidak dapat diestimasi sehingga measure "
     "mereka tidak dihitung (contoh: {examples})."
 )
 EXTREME_PERSONS = (
-    "{n} responden memiliki skor ekstrem ({n_min} skor minimum, {n_max} skor maksimum). "
+    "{n} person memiliki extreme score ({n_min} minimum, {n_max} maksimum). "
     "Mereka tidak ikut estimasi parameter dan diberi measure dengan penyesuaian skor 0,3 poin."
 )
 EXTREME_ITEMS = (
-    "Item berikut memiliki skor ekstrem di antara responden non-ekstrem dan diberi "
+    "Item berikut memiliki extreme score di antara person non-extreme dan diberi "
     "measure dengan penyesuaian skor 0,3 poin: {items}."
 )
 TOO_FEW_NONEXTREME = (
-    "Setelah skor ekstrem disisihkan, tersisa kurang dari dua responden atau dua item "
+    "Setelah extreme score disisihkan, tersisa kurang dari dua person atau dua item "
     "yang dapat diestimasi."
 )
 NOT_CONVERGED = (
-    "PERINGATAN: estimasi TIDAK konvergen setelah {n} iterasi (perubahan estimasi "
-    "maksimum {change:.5f} logit, residual skor maksimum {resid:.4f}). Seluruh hasil "
-    "perlu ditafsirkan dengan sangat hati-hati."
+    "PERINGATAN: estimasi JMLE TIDAK konvergen setelah {n} iterasi (max logit change "
+    "{change:.5f}, max score residual {resid:.4f}). Seluruh hasil perlu ditafsirkan "
+    "dengan sangat hati-hati."
 )
-CONVERGED = "Estimasi konvergen setelah {n} iterasi."
+CONVERGED = "Estimasi JMLE konvergen setelah {n} iterasi."
 CANCELLED = "Estimasi dibatalkan oleh pengguna."
 BIAS_CORRECTION = (
-    "Measure item dan threshold dikoreksi bias JMLE dengan faktor (L-1)/L = {factor:.4f} "
+    "Item measure dan threshold dikoreksi dari JMLE bias dengan faktor (L-1)/L = {factor:.4f} "
     "(L = {L} item). Statistik fit dihitung dari estimasi sebelum koreksi."
 )
-DIF_TOO_FEW = "Grup '{group}' memiliki kurang dari dua responden non-ekstrem sehingga DIF tidak dihitung."
+DIF_TOO_FEW = "Grup '{group}' memiliki kurang dari dua person non-extreme sehingga DIF tidak dihitung."
 ALPHA_FEW_COMPLETE = (
-    "Cronbach's alpha dihitung dari {n} responden dengan jawaban lengkap "
-    "(responden dengan data hilang tidak diikutkan)."
+    "Cronbach's alpha dihitung dari {n} person dengan jawaban lengkap "
+    "(person dengan missing data tidak diikutkan)."
 )

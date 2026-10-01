@@ -5,13 +5,16 @@ mengembalikan :class:`matplotlib.figure.Figure` yang dapat di-embed lewat
 FigureCanvasQTAgg atau disimpan dengan :func:`raschlite.plots.style.save_figure`.
 
 Parameter yang dipakai:
-* Lokasi butir dan threshold yang ditampilkan memakai nilai yang dilaporkan di
-  tabel (sudah dikoreksi bias (L-1)/L), sehingga angka pada grafik sama dengan
-  tabel: Peta Wright, kurva peluang kategori, kurva skor harapan, fungsi
-  informasi, peta kecocokan, kontras PCA, dan DIF.
-* Kurva Karakteristik Butir membandingkan model dengan titik empiris, sehingga
+* Item measure dan threshold location yang ditampilkan memakai nilai yang dilaporkan
+  di tabel (sudah dikoreksi bias (L-1)/L), sehingga angka pada grafik sama dengan
+  tabel: Wright Map, Category Probability Curves, Expected Score Curve, Test
+  Information Function, Item Fit Bubble Chart, PCA first contrast, dan DIF Plot.
+* Item Characteristic Curve membandingkan model dengan titik empiris, sehingga
   memakai solusi JMLE sebelum koreksi bias, yaitu solusi tempat statistik fit
-  dihitung dan measure person diestimasi.
+  dihitung dan person measure diestimasi.
+
+Semua teks pada grafik (judul, sumbu, legenda) memakai istilah Rasch dalam bahasa
+Inggris; penjelasan berbahasa Indonesia ada di panel "Cara membaca grafik ini".
 """
 
 from __future__ import annotations
@@ -20,7 +23,7 @@ import numpy as np
 from matplotlib.colors import TwoSlopeNorm
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
-from scipy import stats
+from scipy.special import stdtrit
 
 from ..interpret import rules
 from ..interpret.narrative import num
@@ -45,6 +48,11 @@ def _labels(res, i: int) -> list[str]:
 
 def _estimable_items(res) -> np.ndarray:
     return res.coded.item_extreme == 0
+
+
+def _count(n: int, noun: str) -> str:
+    """'1 item', '12 items': bentuk tunggal/jamak untuk teks grafik berbahasa Inggris."""
+    return f"{n} {noun}" + ("" if n == 1 else "s")
 
 
 def empirical_bins(theta: np.ndarray, x: np.ndarray, dichotomous: bool, n_bins: int | None = None):
@@ -74,7 +82,7 @@ def empirical_bins(theta: np.ndarray, x: np.ndarray, dichotomous: bool, n_bins: 
             lo, hi = centre - half, centre + half
         else:
             sd = float(x[sel].std(ddof=1)) if n > 1 else 0.0
-            tcrit = stats.t.ppf(0.975, max(n - 1, 1))
+            tcrit = stdtrit(max(n - 1, 1), 0.975)  # kuantil t 0,975
             half = tcrit * sd / np.sqrt(n) if n > 1 else 0.0
             lo, hi = ym - half, ym + half
         out.append((xm, ym, lo, hi, n))
@@ -91,7 +99,7 @@ def _theta_grid(res, extra: np.ndarray | None = None, pad: float = 1.0, n: int =
 
 
 # ---------------------------------------------------------------------------
-# 1. Peta Wright
+# 1. Wright Map
 # ---------------------------------------------------------------------------
 def wright_map(res):
     poly = res.model != "dichotomous"
@@ -113,15 +121,17 @@ def wright_map(res):
         edges = np.arange(lo, hi + width, width)
         counts, _ = np.histogram(pm, edges)
         centres = (edges[:-1] + edges[1:]) / 2
-        ax_p.barh(centres, counts, height=width * 0.82, color=st.BLUE, linewidth=0)
+        ax_p.barh(centres, counts, height=width * 0.82, color=st.PRIMARY, linewidth=0)
         ax_p.invert_xaxis()
-        ax_p.set_xlabel("Jumlah responden")
+        ax_p.set_xlabel("Number of persons")
         ax_p.set_ylabel("Measure (logit)")
         ax_p.axhline(np.mean(pm), color=st.INK_SECONDARY, linewidth=0.9)
-        ax_p.text(ax_p.get_xlim()[0], np.mean(pm), " rerata person", va="bottom", ha="left",
-                  fontsize=8, color=st.INK_SECONDARY)
+        ax_p.text(ax_p.get_xlim()[0], np.mean(pm), " person mean", va="bottom", ha="left",
+                  fontsize=8, color=st.INK_SECONDARY,
+                  bbox={"facecolor": st.SURFACE, "edgecolor": "none", "alpha": 0.85, "pad": 1.0})
         ax_p.grid(axis="y", visible=False)
-        st.titles(ax_p, "Peta Wright", f"{len(pm)} responden ({n_ext} skor ekstrem) dan {len(items)} butir")
+        st.titles(ax_p, "Wright Map", f"{_count(len(pm), 'person')} ({_count(n_ext, 'extreme score')}), "
+                                      f"{_count(len(items), 'item')}")
         ax_i.axhline(0.0, color=st.INK_SECONDARY, linewidth=0.9)
         ax_i.grid(axis="x", visible=False)
         if not poly:
@@ -129,7 +139,7 @@ def wright_map(res):
             ax_i.set_xticks([])
             ax_i.scatter(np.full(len(items), 0.03), items["measure"], marker="_", s=120,
                          color=st.INK, linewidths=1.4)
-            # Label disusun per baris: butir yang jaraknya lebih kecil dari tinggi satu
+            # Label disusun per baris: item yang jaraknya lebih kecil dari tinggi satu
             # baris teks digabung ke baris sebelumnya, sehingga label tidak bertumpuk.
             min_gap = (hi - lo) * 11.0 / 400.0
             rows: list[list] = []
@@ -145,9 +155,9 @@ def wright_map(res):
                 ax_i.plot([0.045, 0.065], [np.mean([m for _, m in members]), y], color=st.NEUTRAL, linewidth=0.8)
                 ax_i.text(0.07, y, "  ".join(n for n, _ in members), va="center", ha="left",
                           fontsize=8, color=st.INK)
-            ax_i.text(0.98, 0.0, "rerata butir = 0", va="bottom", ha="right", fontsize=8,
+            ax_i.text(0.98, 0.0, "item mean = 0", va="bottom", ha="right", fontsize=8,
                       color=st.INK_SECONDARY)
-            ax_i.set_xlabel("Butir (mudah di bawah, sulit di atas)")
+            ax_i.set_xlabel("Items (easier below, harder above)")
         else:
             ei = _estimable_items(res)
             order = items["item"].tolist()
@@ -168,8 +178,8 @@ def wright_map(res):
             ax_i.set_xticks(range(len(order)))
             ax_i.set_xticklabels(order, rotation=90 if len(order) > 10 else 0, fontsize=8)
             ax_i.set_xlim(-0.7, len(order) - 0.3)
-            ax_i.set_xlabel("Butir (diurutkan dari termudah)")
-            handles = [Line2D([], [], marker="D", linestyle="", color=st.INK, label="Measure butir")]
+            ax_i.set_xlabel("Items (ordered from easiest)")
+            handles = [Line2D([], [], marker="D", linestyle="", color=st.INK, label="Item measure")]
             handles += [Line2D([], [], marker="o", linestyle="", color=colors[k], label=f"Threshold {k + 1}")
                         for k in range(m_max)]
             ax_i.legend(handles=handles, loc="upper left", ncols=len(handles) if len(handles) <= 6 else 4,
@@ -179,7 +189,7 @@ def wright_map(res):
 
 
 # ---------------------------------------------------------------------------
-# 2. Kurva Karakteristik Butir
+# 2. Item Characteristic Curve
 # ---------------------------------------------------------------------------
 def item_characteristic_curve(res, item: str):
     i = _item_index(res, item)
@@ -196,31 +206,32 @@ def item_characteristic_curve(res, item: str):
     with st.styled():
         fig = st.new_figure(7.6, 4.8)
         ax = fig.subplots()
-        ax.plot(grid, curve, color=st.BLUE, label="Kurva model")
+        ax.plot(grid, curve, color=st.PRIMARY, label="Model curve")
         bins = empirical_bins(th[o], x[o], dich) if o.sum() >= 12 else np.zeros((0, 5))
         if len(bins):
             yerr = np.vstack([bins[:, 1] - bins[:, 2], bins[:, 3] - bins[:, 1]])
-            ax.errorbar(bins[:, 0], bins[:, 1], yerr=yerr, fmt="o", color=st.ORANGE, markersize=6,
+            ax.errorbar(bins[:, 0], bins[:, 1], yerr=yerr, fmt="o", color=st.SECONDARY, markersize=6,
                         markeredgecolor=st.SURFACE, markeredgewidth=1.2, elinewidth=1.2, capsize=0,
-                        label="Rerata teramati per kelompok (IK 95%)", zorder=3)
+                        label="Observed average per group (95% CI)", zorder=3)
         m = len(delta)
         if dich:
             ax.set_ylim(-0.03, 1.03)
-            ax.set_ylabel("Peluang menjawab benar")
+            ax.set_ylabel("Probability of correct response")
         else:
             ax.set_ylim(-0.1, m + 0.1)
             ax.set_yticks(range(m + 1))
             ax.set_yticklabels(_labels(res, i))
-            ax.set_ylabel("Skor harapan (kategori)")
-        ax.set_xlabel("Measure responden (logit)")
+            ax.set_ylabel("Expected score (category)")
+        ax.set_xlabel("Person measure (logit)")
         ax.legend(loc="upper left")
-        st.titles(ax, f"Kurva Karakteristik Butir: {item}",
-                  f"Measure {num(r['measure'])} logit · infit {num(r['infit_mnsq'])} · outfit {num(r['outfit_mnsq'])}")
+        st.titles(ax, f"Item Characteristic Curve: {item}",
+                  f"Measure {num(r['measure'])} logit · Infit MNSQ {num(r['infit_mnsq'])} · "
+                  f"Outfit MNSQ {num(r['outfit_mnsq'])}")
     return fig
 
 
 # ---------------------------------------------------------------------------
-# 3. Kurva Peluang Kategori
+# 3. Category Probability Curves
 # ---------------------------------------------------------------------------
 def category_probability_curves(res, item: str):
     i = _item_index(res, item)
@@ -240,27 +251,27 @@ def category_probability_curves(res, item: str):
         for k in disordered:
             ax.axvspan(min(loc[k], loc[k - 1]), max(loc[k], loc[k - 1]), color=st.PROBLEM, alpha=0.08, zorder=0)
         for k in range(P.shape[1]):
-            ax.plot(grid, P[:, k], color=colors[k], label=f"Kategori {labels[k]}", zorder=2)
+            ax.plot(grid, P[:, k], color=colors[k], label=f"Category {labels[k]}", zorder=2)
             j = int(np.argmax(P[:, k]))
             ax.text(grid[j], P[j, k] + 0.025, labels[k], ha="center", va="bottom", fontsize=8.5, color=st.INK)
         ax.set_ylim(0, 1.08)
-        ax.set_xlabel("Measure responden (logit)")
-        ax.set_ylabel("Peluang memilih kategori")
+        ax.set_xlabel("Person measure (logit)")
+        ax.set_ylabel("Category probability")
         handles, names_ = ax.get_legend_handles_labels()
         handles.append(Line2D([], [], color=st.INK_MUTED, linewidth=0.8))
         names_.append("Threshold")
         if disordered:
             handles.append(Line2D([], [], color=st.PROBLEM, linewidth=1.6))
-            names_.append("Threshold tidak berurutan")
+            names_.append("Disordered threshold")
         ax.legend(handles, names_, loc="center left", bbox_to_anchor=(1.01, 0.5))
-        sub = ("Threshold tidak berurutan: ada kategori yang tidak pernah menjadi pilihan paling mungkin"
-               if disordered else "Threshold berurutan")
-        st.titles(ax, f"Kurva Peluang Kategori: {item}", sub)
+        sub = ("Disordered thresholds: at least one category is never the most probable response"
+               if disordered else "Ordered thresholds")
+        st.titles(ax, f"Category Probability Curves: {item}", sub)
     return fig
 
 
 # ---------------------------------------------------------------------------
-# 4. Kurva Skor Harapan
+# 4. Expected Score Curve
 # ---------------------------------------------------------------------------
 def expected_score_curve(res, item: str):
     i = _item_index(res, item)
@@ -282,20 +293,20 @@ def expected_score_curve(res, item: str):
                     fontsize=8.5, color=st.INK)
         for h in half:
             ax.axvline(h, color=st.INK_MUTED, linewidth=0.8, zorder=1)
-        ax.plot(grid, E, color=st.BLUE, zorder=2)
+        ax.plot(grid, E, color=st.PRIMARY, zorder=2)
         ax.set_ylim(-0.1, m + 0.6)
         ax.set_yticks(range(m + 1))
         ax.set_yticklabels(labels)
         ax.set_xlim(grid[0], grid[-1])
-        ax.set_xlabel("Measure responden (logit)")
-        ax.set_ylabel("Skor harapan (kategori)")
-        st.titles(ax, f"Kurva Skor Harapan: {item}",
-                  "Zona = rentang kemampuan yang skor harapannya paling dekat dengan suatu kategori")
+        ax.set_xlabel("Person measure (logit)")
+        ax.set_ylabel("Expected score (category)")
+        st.titles(ax, f"Expected Score Curve: {item}",
+                  "Zones = measure ranges where the expected score is closest to each category")
     return fig
 
 
 # ---------------------------------------------------------------------------
-# 5. Fungsi Informasi Tes dan SEM
+# 5. Test Information Function and SEM
 # ---------------------------------------------------------------------------
 def test_information(res):
     ei = _estimable_items(res)
@@ -309,29 +320,29 @@ def test_information(res):
     with st.styled():
         fig = st.new_figure(7.6, 4.8)
         ax = fig.subplots()
-        ax.plot(grid, info, color=st.BLUE, label="Informasi tes (sumbu kiri)")
-        ax.scatter([grid[j]], [info[j]], s=40, color=st.BLUE, edgecolors=st.SURFACE, linewidths=1.5, zorder=3)
-        ax.annotate(f"maks. {num(info[j], 1)} pada {num(grid[j])} logit", (grid[j], info[j]),
+        ax.plot(grid, info, color=st.PRIMARY, label="Test information (left axis)")
+        ax.scatter([grid[j]], [info[j]], s=40, color=st.PRIMARY, edgecolors=st.SURFACE, linewidths=1.5, zorder=3)
+        ax.annotate(f"max. {num(info[j], 1)} at {num(grid[j])} logit", (grid[j], info[j]),
                     textcoords="offset points", xytext=(8, 6), fontsize=8, color=st.INK)
         ax.set_ylim(0, info.max() * 1.15)
-        ax.set_xlabel("Measure responden (logit)")
-        ax.set_ylabel("Informasi tes")
+        ax.set_xlabel("Person measure (logit)")
+        ax.set_ylabel("Test information")
         ax2 = ax.twinx()
-        ax2.plot(grid, sem, color=st.ORANGE, label="Galat baku pengukuran (sumbu kanan)")
+        ax2.plot(grid, sem, color=st.SECONDARY, label="Standard error of measurement (right axis)")
         ax2.set_ylim(0, min(sem.max(), max(3.0, 3 * sem.min())) * 1.05)
-        ax2.set_ylabel("Galat baku pengukuran, SEM (logit)")
+        ax2.set_ylabel("Standard error of measurement, SEM (logit)")
         ax2.grid(False)
         ax2.spines["right"].set_visible(True)
         h1, l1 = ax.get_legend_handles_labels()
         h2, l2 = ax2.get_legend_handles_labels()
         ax.legend(h1 + h2, l1 + l2, loc="upper left")
-        st.titles(ax, "Fungsi Informasi Tes dan Galat Baku Pengukuran",
-                  "SEM = 1 / akar(informasi); makin tinggi informasi, makin kecil galat")
+        st.titles(ax, "Test Information Function and Standard Error of Measurement",
+                  "SEM = 1 / √(test information); the higher the information, the smaller the SEM")
     return fig
 
 
 # ---------------------------------------------------------------------------
-# 6. Peta kecocokan (bubble chart)
+# 6. Item Fit Bubble Chart
 # ---------------------------------------------------------------------------
 def fit_bubble(res):
     items = res.items[~res.items["extreme"]]
@@ -347,27 +358,27 @@ def fit_bubble(res):
             bad = (y < lo) | (y > hi)
             ax.axhspan(lo, hi, color=st.GOOD_ZONE, alpha=0.10, linewidth=0, zorder=0)
             ax.axhline(1.0, color=st.INK_MUTED, linewidth=0.8, zorder=1)
-            ax.scatter(items["measure"][~bad], y[~bad], s=size[~bad], color=st.BLUE, alpha=0.75,
+            ax.scatter(items["measure"][~bad], y[~bad], s=size[~bad], color=st.PRIMARY, alpha=0.75,
                        edgecolors=st.SURFACE, linewidths=1.5, zorder=2)
             ax.scatter(items["measure"][bad], y[bad], s=size[bad], color=st.PROBLEM, alpha=0.85,
                        edgecolors=st.SURFACE, linewidths=1.5, zorder=3)
             for name, xv, yv in zip(items["item"][bad], items["measure"][bad], y[bad]):
                 ax.annotate(name, (xv, yv), textcoords="offset points", xytext=(7, 4), fontsize=8, color=st.INK)
             ax.set_ylim(0, ymax)
-            ax.set_xlabel("Measure butir (logit)")
+            ax.set_xlabel("Item measure (logit)")
             ax.set_title(label, loc="left", fontsize=10, color=st.INK_SECONDARY)
         axes[0].set_ylabel("MNSQ")
-        handles = [Line2D([], [], marker="o", linestyle="", color=st.BLUE, label="Dalam rentang"),
-                   Line2D([], [], marker="o", linestyle="", color=st.PROBLEM, label="Di luar rentang"),
-                   Patch(color=st.GOOD_ZONE, alpha=0.25, label=f"Zona {num(lo, 1)}-{num(hi, 1)}"),
-                   Line2D([], [], linestyle="", label="Luas gelembung sebanding SE")]
+        handles = [Line2D([], [], marker="o", linestyle="", color=st.PRIMARY, label="Within range"),
+                   Line2D([], [], marker="o", linestyle="", color=st.PROBLEM, label="Outside range"),
+                   Patch(color=st.GOOD_ZONE, alpha=0.25, label=f"Zone {num(lo, 1)}-{num(hi, 1)}"),
+                   Line2D([], [], linestyle="", label="Bubble area proportional to SE")]
         fig.legend(handles=handles, loc="outside lower center", ncols=4)
-        fig.suptitle("Peta Kecocokan Butir", x=0.01, ha="left", fontsize=12, fontweight="bold", color=st.INK)
+        fig.suptitle("Item Fit Bubble Chart", x=0.01, ha="left", fontsize=12, fontweight="bold", color=st.INK)
     return fig
 
 
 # ---------------------------------------------------------------------------
-# 7. Histogram kecocokan person
+# 7. Person Fit Distribution
 # ---------------------------------------------------------------------------
 def person_fit_histogram(res):
     p = res.persons[~res.persons["extreme"] & res.persons["infit_mnsq"].notna()]
@@ -381,20 +392,20 @@ def person_fit_histogram(res):
             edges = np.arange(0.0, top + 0.1, 0.1)
             counts, _ = np.histogram(np.clip(v, 0, top - 1e-9), edges)
             ax.axvspan(lo, hi, color=st.GOOD_ZONE, alpha=0.10, linewidth=0, zorder=0)
-            ax.bar(edges[:-1], counts, width=0.1 * 0.82, align="edge", color=st.BLUE, linewidth=0, zorder=2)
+            ax.bar(edges[:-1], counts, width=0.1 * 0.82, align="edge", color=st.PRIMARY, linewidth=0, zorder=2)
             out = int(((v < lo) | (v > hi)).sum())
-            ax.text(0.98, 0.95, f"{out} dari {len(v)} di luar {num(lo, 1)}-{num(hi, 1)}",
+            ax.text(0.98, 0.95, f"{out} of {len(v)} outside {num(lo, 1)}-{num(hi, 1)}",
                     transform=ax.transAxes, ha="right", va="top", fontsize=8.5, color=st.INK)
-            ax.set_xlabel(f"{label} (nilai >= {num(top, 1)} digabung di batang terakhir)")
+            ax.set_xlabel(f"{label} (values >= {num(top, 1)} pooled in the last bar)")
             ax.set_title(label, loc="left", fontsize=10, color=st.INK_SECONDARY)
-        axes[0].set_ylabel("Jumlah responden")
-        fig.suptitle("Distribusi Kecocokan Responden", x=0.01, ha="left", fontsize=12, fontweight="bold",
+        axes[0].set_ylabel("Number of persons")
+        fig.suptitle("Person Fit Distribution", x=0.01, ha="left", fontsize=12, fontweight="bold",
                      color=st.INK)
     return fig
 
 
 # ---------------------------------------------------------------------------
-# 8. Kontras pertama PCA residual
+# 8. PCA of Residuals: First Contrast
 # ---------------------------------------------------------------------------
 def pca_contrast(res):
     d = res.dimensionality
@@ -412,24 +423,24 @@ def pca_contrast(res):
         fig = st.new_figure(7.6, 4.8)
         ax = fig.subplots()
         ax.axhline(0, color=st.INK_MUTED, linewidth=0.8)
-        ax.scatter(x[pos], y[pos], s=46, color=st.BLUE, edgecolors=st.SURFACE, linewidths=1.5, label="Loading positif")
-        ax.scatter(x[~pos], y[~pos], s=46, color=st.ORANGE, edgecolors=st.SURFACE, linewidths=1.5,
-                   label="Loading negatif")
+        ax.scatter(x[pos], y[pos], s=46, color=st.PRIMARY, edgecolors=st.SURFACE, linewidths=1.5, label="Positive loading")
+        ax.scatter(x[~pos], y[~pos], s=46, color=st.SECONDARY, edgecolors=st.SURFACE, linewidths=1.5,
+                   label="Negative loading")
         for name, xv, yv in zip(load.index, x, y):
             if name in show:
                 ax.annotate(name, (xv, yv), textcoords="offset points", xytext=(6, 3), fontsize=8, color=st.INK)
-        ax.set_xlabel("Measure butir (logit)")
-        ax.set_ylabel("Loading pada kontras pertama")
+        ax.set_xlabel("Item measure (logit)")
+        ax.set_ylabel("Loading on first contrast")
         ax.legend(loc="best")
         rel = "<" if eig < rules.CONTRAST_EIGENVALUE_MAX else ">="
-        st.titles(ax, "Kontras Pertama PCA Residual",
+        st.titles(ax, "PCA of Residuals: First Contrast",
                   f"Eigenvalue {num(eig)} ({rel} {num(rules.CONTRAST_EIGENVALUE_MAX, 1)}); "
-                  f"varians dijelaskan measure {num(d['variance_explained_pct'], 1)}%")
+                  f"raw variance explained by measures {num(d['variance_explained_pct'], 1)}%")
     return fig
 
 
 # ---------------------------------------------------------------------------
-# 9. DIF
+# 9. DIF Plot
 # ---------------------------------------------------------------------------
 def dif_plot(res):
     dif = res.dif
@@ -442,27 +453,27 @@ def dif_plot(res):
         for xi, flag in zip(x, dif["flag_dif"]):
             if flag:
                 ax.axvspan(xi - 0.45, xi + 0.45, color=st.PROBLEM, alpha=0.10, linewidth=0, zorder=0)
-        for off, key, se, color, label in ((-0.14, "measure_a", "se_a", st.BLUE, f"Kelompok {ga}"),
-                                           (0.14, "measure_b", "se_b", st.ORANGE, f"Kelompok {gb}")):
+        for off, key, se, color, label in ((-0.14, "measure_a", "se_a", st.PRIMARY, f"Group {ga}"),
+                                           (0.14, "measure_b", "se_b", st.SECONDARY, f"Group {gb}")):
             ax.errorbar(x + off, dif[key], yerr=z * dif[se], fmt="o", color=color, markersize=6,
                         markeredgecolor=st.SURFACE, markeredgewidth=1.2, elinewidth=1.2, capsize=0, label=label,
                         zorder=2)
         ax.set_xticks(x)
         ax.set_xticklabels(dif["item"], rotation=90 if len(dif) > 12 else 0, fontsize=8)
         ax.set_xlim(-0.7, len(dif) - 0.3)
-        ax.set_ylabel("Measure butir (logit)")
+        ax.set_ylabel("Item measure (logit)")
         ax.grid(axis="x", visible=False)
         handles, labels = ax.get_legend_handles_labels()
         if dif["flag_dif"].any():
             handles.append(Patch(color=st.PROBLEM, alpha=0.25))
-            labels.append("Ditandai DIF")
+            labels.append("Flagged DIF")
         ax.legend(handles, labels, loc="upper left", ncols=3)
-        st.titles(ax, "Kesulitan Butir per Kelompok (DIF)", "Titik = measure per kelompok; garis = IK 95%")
+        st.titles(ax, "DIF Plot: Item Measure by Group", "Points = item measure per group; bars = 95% CI")
     return fig
 
 
 # ---------------------------------------------------------------------------
-# 10. Heatmap Q3
+# 10. Yen's Q3 Matrix
 # ---------------------------------------------------------------------------
 def q3_heatmap(res):
     q3 = res.q3
@@ -495,8 +506,9 @@ def q3_heatmap(res):
         for s in ax.spines.values():
             s.set_visible(False)
         cb = fig.colorbar(im, ax=ax, shrink=0.8)
-        cb.set_label("Q3 (korelasi residual); warna netral = rata-rata Q3", color=st.INK_SECONDARY)
+        cb.set_label("Q3 (residual correlation); neutral colour = mean Q3", color=st.INK_SECONDARY)
         cb.outline.set_visible(False)
-        st.titles(ax, "Matriks Yen's Q3",
-                  f"Rata-rata {num(q3['mean'], 3)}; kotak hitam = Q3 > {num(q3['cutoff'], 3)} (rata-rata + 0,2)")
+        st.titles(ax, "Yen's Q3 Matrix",
+                  f"Mean Q3 {num(q3['mean'], 3)}; black boxes = Q3 > {num(q3['cutoff'], 3)} "
+                  f"(mean + {num(rules.Q3_RELATIVE_CUTOFF, 1)})")
     return fig

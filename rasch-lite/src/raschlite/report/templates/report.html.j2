@@ -6,70 +6,84 @@
 <meta name="generator" content="{{ app }} {{ version }}">
 <title>{{ title }} · {{ model_name }}</title>
 <style>
-  :root { --ink:#1F1F1F; --ink2:#4D4D4D; --muted:#7A7A7A; --line:#E6E6E6; --flag:#FBE3D6; --dim:#F2F2F2;
-          --hijau:#009E73; --kuning:#F0E442; --merah:#D55E00; --abu:#BDBDBD; --accent:#0072B2; }
+  :root { --bg:{{ t.BACKGROUND }}; --card:{{ t.CARD }}; --sand:{{ t.SAND }}; --line:{{ t.LINE }};
+          --line2:{{ t.LINE_STRONG }}; --ink:{{ t.INK }}; --ink2:{{ t.INK_SECONDARY }}; --muted:{{ t.INK_MUTED }};
+          --bronze:{{ t.BRONZE }}; --navy:{{ t.NAVY }}; --navytext:{{ t.NAVY_TEXT }}; --sandnavy:{{ t.SAND_ON_NAVY }};
+          --flag:{{ t.FLAG_ROW }}; --dim:{{ t.MUTED_ROW }}; --hijau:{{ t.STATUS['hijau'] }};
+          --kuning:{{ t.STATUS['kuning'] }}; --merah:{{ t.STATUS['merah'] }}; --abu:{{ t.STATUS['abu'] }};
+          --warnbg:{{ t.BANNER['warning'][0] }}; --warnline:{{ t.BANNER['warning'][1] }}; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: #FFFFFF; color: var(--ink);
-         font: 15px/1.55 "Segoe UI", "DejaVu Sans", "Liberation Sans", Arial, sans-serif; }
-  main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; }
-  h1 { font-size: 26px; margin: 0 0 4px; }
-  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.6 "Segoe UI", Montserrat, "DejaVu Sans", "Liberation Sans", Arial, sans-serif; }
+  .serif { font-family: "Cormorant Garamond", Georgia, "DejaVu Serif", serif; }
+  header.band { background: var(--navy); color: var(--navytext); padding: 36px 16px 30px; }
+  header.band .inner, main { max-width: 1120px; margin: 0 auto; }
+  .kicker { color: var(--sandnavy); letter-spacing: 4px; text-transform: uppercase; font-size: 12px; font-weight: 600; }
+  header.band h1 { font-weight: 400; font-size: 38px; letter-spacing: 1px; margin: 8px 0 6px; line-height: 1.1; }
+  header.band .sub { color: #D8CCBC; margin: 0; }
+  main { padding: 18px 16px 64px; }
+  nav { margin: 6px 0 4px; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
+  nav a { color: var(--bronze); text-decoration: none; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; }
+  h2 { font-weight: 400; font-size: 26px; letter-spacing: 2px; text-transform: uppercase; margin: 40px 0 14px;
+       padding-bottom: 8px; border-bottom: 1px solid var(--line2); }
   h3 { font-size: 16px; margin: 22px 0 8px; }
-  .sub { color: var(--muted); margin: 0 0 20px; }
-  nav { margin: 12px 0 8px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
-  nav a { color: var(--accent); text-decoration: none; }
-  .dot { display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 1px solid #7A7A7A;
+  .label { color: var(--bronze); letter-spacing: 3px; text-transform: uppercase; font-size: 12px; font-weight: 600; }
+  .dot { display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 1px solid var(--muted);
          vertical-align: -1px; margin-right: 6px; }
   .s-hijau { background: var(--hijau); } .s-kuning { background: var(--kuning); }
   .s-merah { background: var(--merah); } .s-abu { background: var(--abu); }
   .lights { display: grid; gap: 8px; }
-  .light { display: grid; grid-template-columns: 190px 1fr; gap: 12px; padding: 10px 12px;
-           border: 1px solid var(--line); border-radius: 6px; }
-  .light .status { color: var(--ink2); font-size: 13px; margin-left: 21px; }
-  .caution { background: #FFF7D6; border: 1px solid #E9D98A; border-radius: 6px; padding: 10px 14px; }
-  table { border-collapse: collapse; font-size: 13px; }
+  .light { display: grid; grid-template-columns: 210px 1fr; gap: 12px; padding: 12px 16px; background: var(--card);
+           border: 1px solid var(--line); border-radius: 12px; }
+  .light .status { color: var(--muted); font-size: 13px; margin-left: 21px; }
+  .caution { background: var(--warnbg); border: 1px solid var(--warnline); border-radius: 12px; padding: 10px 16px; }
+  table { border-collapse: collapse; font-size: 13px; background: var(--card); }
   th, td { border: 1px solid var(--line); padding: 4px 8px; vertical-align: top; }
-  th { background: var(--line); text-align: left; position: sticky; top: 0; }
+  th { background: var(--sand); text-align: left; position: sticky; top: 0; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   tr.flag td { background: var(--flag); } tr.dim td { background: var(--dim); }
-  .tablewrap { overflow: auto; max-height: 560px; border: 1px solid var(--line); }
+  .tablewrap { overflow: auto; max-height: 560px; border: 1px solid var(--line); border-radius: 8px; }
   .tablewrap table { border: none; width: 100%; }
-  .meta td:first-child { font-weight: 600; width: 260px; }
-  details { margin: 6px 0 14px; } summary { cursor: pointer; color: var(--accent); }
+  .meta td:first-child { font-weight: 600; width: 280px; background: var(--sand); }
+  details { margin: 6px 0 14px; } summary { cursor: pointer; color: var(--bronze); font-weight: 600; }
   .refs { color: var(--ink2); font-size: 13px; }
   figure { margin: 18px 0 30px; }
-  figure img { width: 100%; height: auto; border: 1px solid var(--line); }
-  figcaption { background: #F7F7F7; border-left: 3px solid var(--accent); padding: 8px 12px; margin-top: 8px;
+  figure img { width: 100%; height: auto; background: #FFFFFF; border: 1px solid var(--line); border-radius: 8px; }
+  figcaption { background: var(--card); border-left: 3px solid var(--bronze); padding: 8px 12px; margin-top: 8px;
                font-size: 14px; color: var(--ink2); }
   .note { color: var(--ink2); font-size: 14px; }
   dt { font-weight: 600; margin-top: 10px; } dd { margin: 2px 0 0 0; color: var(--ink2); }
-  footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
-  @media (max-width: 640px) { .light { grid-template-columns: 1fr; } }
+  footer { color: var(--bronze); font-size: 12px; letter-spacing: 4px; text-transform: uppercase; margin-top: 48px;
+           border-top: 1px solid var(--line2); padding-top: 14px; }
+  @media (max-width: 640px) { .light { grid-template-columns: 1fr; } header.band h1 { font-size: 30px; } }
   @media print { .tablewrap { max-height: none; overflow: visible; } nav { display: none; }
                  figure, .light { break-inside: avoid; } }
 </style>
 </head>
 <body>
+<header class="band"><div class="inner">
+<div class="kicker">{{ app }}</div>
+<h1 class="serif">{{ title }}</h1>
+<p class="sub">{{ model_name }} · {{ generated }}</p>
+</div></header>
 <main>
-<h1>{{ title }}</h1>
-<p class="sub">{{ generated }}</p>
 <nav>
   <a href="#ringkasan">{{ labels.summary }}</a><a href="#penjelasan">{{ labels.explanation }}</a>
   <a href="#grafik">{{ labels.charts }}</a><a href="#tabel">{{ labels.tables }}</a>
   <a href="#glosarium">{{ labels.glossary }}</a>
 </nav>
 
-<h2>{{ labels.meta }}</h2>
+<h2 class="serif">{{ labels.meta }}</h2>
 <table class="meta">
 {% for label, value in meta %}<tr><td>{{ label }}</td><td>{{ value }}</td></tr>
 {% endfor %}</table>
 
 {% if cautions %}
-<h2>{{ labels.cautions }}</h2>
+<h2 class="serif">{{ labels.cautions }}</h2>
 <div class="caution"><ul>{% for c in cautions %}<li>{{ c }}</li>{% endfor %}</ul></div>
 {% endif %}
 
-<h2 id="ringkasan">{{ labels.summary }}</h2>
+<h2 class="serif" id="ringkasan">{{ labels.summary }}</h2>
 <div class="lights">
 {% for lt in lights %}<div class="light">
   <div><span class="dot s-{{ lt.status }}"></span><strong>{{ lt.title }}</strong><div class="status">{{ status_text[lt.status] }}</div></div>
@@ -77,7 +91,7 @@
 </div>
 {% endfor %}</div>
 
-<h2 id="penjelasan">{{ labels.explanation }}</h2>
+<h2 class="serif" id="penjelasan">{{ labels.explanation }}</h2>
 {% for p in intro %}<p>{{ p }}</p>{% endfor %}
 {% for sec in sections %}
 <h3><span class="dot s-{{ sec.status }}"></span>{{ sec.title }}</h3>
@@ -86,13 +100,13 @@
 <ul>{% for a in sec.actions %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}
 {% if sec.technical %}<details><summary>{{ labels.technical }}</summary>
 <table><tr>{% for h in tech_head %}<th>{{ h }}</th>{% endfor %}</tr>
-{% for t in sec.technical %}<tr><td>{{ t.label.strip() }}</td><td>{{ t.value }}</td><td>{{ t.criterion }}</td></tr>
+{% for row in sec.technical %}<tr><td>{{ row.label.strip() }}</td><td>{{ row.value }}</td><td>{{ row.criterion }}</td></tr>
 {% endfor %}</table>
 {% if sec.references %}<p class="refs">{{ labels.references }}:</p><ul class="refs">{% for r in sec.references %}<li>{{ r }}</li>{% endfor %}</ul>{% endif %}
 </details>{% endif %}
 {% endfor %}
 
-<h2 id="grafik">{{ labels.charts }}</h2>
+<h2 class="serif" id="grafik">{{ labels.charts }}</h2>
 <p class="note">{{ per_item_note }}</p>
 {% for ch in charts %}
 <figure>
@@ -102,7 +116,7 @@
 </figure>
 {% endfor %}
 
-<h2 id="tabel">{{ labels.tables }}</h2>
+<h2 class="serif" id="tabel">{{ labels.tables }}</h2>
 <p class="note">{{ labels.table_hint }}</p>
 {% for tb in tables %}
 <h3>{{ tb.title }}</h3>
@@ -113,10 +127,10 @@
 {% else %}<p class="note">{{ labels.no_rows }}</p>{% endif %}
 {% endfor %}
 
-<h2 id="glosarium">{{ labels.glossary }}</h2>
-<dl>{% for t in glossary %}<dt>{{ t.term }}</dt><dd>{{ t.long }}</dd>{% endfor %}</dl>
+<h2 class="serif" id="glosarium">{{ labels.glossary }}</h2>
+<dl>{% for term in glossary %}<dt>{{ term.term }}</dt><dd>{{ term.long }}</dd>{% endfor %}</dl>
 
-<footer>{{ app }} {{ version }}</footer>
+<footer>{{ app }} · {{ version }} · Center for Social Psychology and Society</footer>
 </main>
 </body>
 </html>
