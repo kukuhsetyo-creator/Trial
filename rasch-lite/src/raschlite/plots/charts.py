@@ -209,7 +209,9 @@ def item_characteristic_curve(res, item: str):
         ax.plot(grid, curve, color=st.PRIMARY, label="Model curve")
         bins = empirical_bins(th[o], x[o], dich) if o.sum() >= 12 else np.zeros((0, 5))
         if len(bins):
-            yerr = np.vstack([bins[:, 1] - bins[:, 2], bins[:, 3] - bins[:, 1]])
+            # Interval Wilson berpusat bukan tepat di proporsi teramati; pada proporsi 0 atau 1 selisih
+            # pembulatan floating-point dapat membuat panjang galat sedikit negatif, jadi dipotong di 0.
+            yerr = np.clip(np.vstack([bins[:, 1] - bins[:, 2], bins[:, 3] - bins[:, 1]]), 0.0, None)
             ax.errorbar(bins[:, 0], bins[:, 1], yerr=yerr, fmt="o", color=st.SECONDARY, markersize=6,
                         markeredgecolor=st.SURFACE, markeredgewidth=1.2, elinewidth=1.2, capsize=0,
                         label="Observed average per group (95% CI)", zorder=3)
