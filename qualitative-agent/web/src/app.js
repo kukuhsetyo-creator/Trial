@@ -731,7 +731,7 @@ const VIEWS = {
       ${S.method_runs.length ? `<div class="card tablewrap"><table><tr><th>No.</th><th>Proyek</th><th>Metode</th><th>Dimulai</th><th>Kode</th><th>Menunggu tinjauan</th><th>Tema</th></tr>
         ${S.method_runs.slice().reverse().map((r) => `<tr><td>${r.id}</td><td>${esc(r.project_label)}</td><td>${esc(METHODS[r.method]?.name || r.method)}</td><td>${esc(r.started_at)}</td>
         <td>${codesOfRun(r.id).length}</td><td>${codesOfRun(r.id, ["proposed"]).length}</td><td>${themesOfRun(r.id).length}</td></tr>`).join("")}</table></div>`
-        : `<p class="muted">Belum ada sesi analisis.</p>`}`;
+        : `<div class="empty">Belum ada sesi analisis.</div>`}`;
   },
 
   settings() {
@@ -772,7 +772,7 @@ const VIEWS = {
         const units = S.units.filter((u) => u.document_id === d.id).sort((a, b) => a.sequence_index - b.sequence_index);
         return `<details class="card"><summary><b>${esc(d.title)}</b> · ${esc(SOURCE_TYPES[d.source_type] || d.source_type)} · ${units.length} unit${d.participant_id ? ` · partisipan ${esc(d.participant_id)}` : ""}</summary>
           ${units.map((u) => `<blockquote>${u.speaker ? `<b>${esc(u.speaker)}:</b> ` : ""}${esc(u.text)}${u.paralinguistic_notes ? `<div class="muted">${esc(u.paralinguistic_notes)}</div>` : ""}</blockquote>`).join("")}</details>`;
-      }).join("") : `<p class="muted">Belum ada dokumen.</p>`}`;
+      }).join("") : `<div class="empty">Belum ada dokumen.</div>`}`;
   },
 
   coding() {
@@ -833,7 +833,7 @@ const VIEWS = {
           ${t.definition ? `<p style="white-space:pre-wrap;margin-top:6px">${esc(t.definition)}</p>` : ""}
           <details><summary>${codes.length} kode tertaut</summary>${codes.map((k) => `<div>${chip(k.status)} <b>${esc(k.label)}</b> — <span class="muted">"${esc((unitOf(k)?.text || "").slice(0, 160))}"</span></div>`).join("")}</details>
           ${t.status === "proposed" ? reviewControls("category", t.id) : ""}</div>`;
-      }).join("") : `<p class="muted">Belum ada tema.</p>`}
+      }).join("") : `<div class="empty">Belum ada tema.</div>`}
       <h3>Antrean peninjauan kode (${queue.length})</h3>
       <p class="muted">Status hanya berubah di sini, dan setiap tindakan tercatat.</p>
       ${queue.length ? queue.slice(0, 80).map((c) => {
@@ -856,7 +856,7 @@ const VIEWS = {
         <div class="actions"><button class="btn primary" data-action="save-memo">Simpan memo</button></div>
       </div>
       ${memos.length ? memos.map((m) => `<div class="card"><div class="muted">#${m.id} · ditulis ${m.created_by === "human" ? "<b>peneliti</b>" : "AI"} · ${esc(m.created_at)}</div><p style="white-space:pre-wrap;margin-top:6px">${esc(m.content)}</p></div>`).join("")
-        : `<p class="muted">Belum ada memo pada sesi ini.</p>`}`;
+        : `<div class="empty">Belum ada memo pada sesi ini.</div>`}`;
   },
 
   audit() {
@@ -871,7 +871,7 @@ const VIEWS = {
       <h3>Rincian</h3>
       ${rows.length ? rows.slice(0, 200).map((r) => `<details class="card"><summary>${r.response_text.startsWith("[CALL_FAILED]") ? "<b>GAGAL</b> · " : ""}#${r.id} · ${esc(r.stage)} · ${esc(r.called_at)} · ${r.input_tokens ?? "-"}/${r.output_tokens ?? "-"} token</summary>
         <label>Teks yang dikirim</label><pre>${esc(r.prompt_text)}</pre><label>Jawaban</label><pre>${esc(r.response_text)}</pre></details>`).join("")
-        : `<p class="muted">Belum ada pemanggilan.</p>`}`;
+        : `<div class="empty">Belum ada pemanggilan.</div>`}`;
   },
 
   backup() {

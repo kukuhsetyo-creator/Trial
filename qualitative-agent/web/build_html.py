@@ -11,10 +11,32 @@ file:// tempat Web Worker sering diblokir.
 Pemakaian: python web/build_html.py
 """
 
+import base64
 from pathlib import Path
 
 WEB = Path(__file__).resolve().parent
 VENDOR = WEB / "vendor"
+ASSETS = WEB / "assets"
+
+# Font CSPS yang disematkan sebagai data URI (SIL OFL 1.1, lisensi di assets/fonts).
+FONTS = [
+    ("Cormorant Garamond", 500, "cormorant-garamond-latin-500-normal.woff2"),
+    ("Montserrat", 400, "montserrat-latin-400-normal.woff2"),
+    ("Montserrat", 600, "montserrat-latin-600-normal.woff2"),
+    ("Allura", 400, "allura-subset.woff2"),
+]
+
+
+def data_uri(path: Path, mime: str) -> str:
+    return f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+
+
+def font_faces() -> str:
+    return "\n".join(
+        f'@font-face {{ font-family: "{keluarga}"; font-weight: {tebal}; font-style: normal; '
+        f'font-display: swap; src: url("{data_uri(ASSETS / "fonts" / berkas, "font/woff2")}") format("woff2"); }}'
+        for keluarga, tebal, berkas in FONTS
+    )
 OUT = WEB / "AgenKualitatif.html"
 
 
@@ -34,8 +56,11 @@ def main() -> None:
         for nama in ("mammoth.browser.min.js", "pdf.min.js", "pdf.worker.min.js")
     )
     app = aman_disematkan((WEB / "src" / "app.js").read_text(encoding="utf-8"), "app.js")
-    assert "<!--VENDOR-->" in html and "/*APP*/" in html
-    html = html.replace("<!--VENDOR-->", vendor).replace("/*APP*/", app)
+    for penanda in ("<!--VENDOR-->", "/*APP*/", "/*FONTS*/", "{{LOGO_CSPS}}"):
+        assert penanda in html, penanda
+    html = (html.replace("/*FONTS*/", font_faces())
+                .replace("{{LOGO_CSPS}}", data_uri(ASSETS / "logo-csps.png", "image/png"))
+                .replace("<!--VENDOR-->", vendor).replace("/*APP*/", app))
     OUT.write_text(html, encoding="utf-8")
     print(f"Dibangun: {OUT} ({OUT.stat().st_size // 1024} KB)")
 
