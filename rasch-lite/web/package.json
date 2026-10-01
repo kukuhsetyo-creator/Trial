@@ -1,0 +1,6 @@
+{
+  "name": "raschlite-web",
+  "private": true,
+  "type": "commonjs",
+  "description": "RaschLite versi HTML: satu berkas, luring, tanpa dependensi pihak ketiga"
+}

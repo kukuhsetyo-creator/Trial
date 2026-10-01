@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="RaschLite __VERSION__ (HTML)">
+<title>RaschLite by CSPS</title>
+<link rel="icon" href="__ICON__">
+<style id="app-css">__CSS__</style>
+</head>
+<body>
+<header class="band">
+  <img id="logo" alt="Logo CSPS">
+  <div><div class="kicker">Center for Social Psychology and Society</div><h1 id="app-name">RaschLite by CSPS</h1></div>
+  <div class="spacer"></div><div class="ver" id="app-ver"></div>
+</header>
+<main>
+  <div id="steps" class="steps"></div>
+
+  <section id="page-import" class="page">
+    <h2 class="title" id="t-import"></h2>
+    <p class="help" id="import-help"></p>
+    <div class="row">
+      <button id="btn-open" class="primary"></button><button id="btn-dicho"></button><button id="btn-poly"></button>
+      <input type="file" id="file" accept=".csv,.txt,.xlsx,.xlsm" hidden>
+    </div>
+    <p id="file-label" class="help"></p>
+    <div id="import-form" hidden>
+      <div class="grid2">
+        <div class="card">
+          <label class="field" id="l-id" for="id-col"></label><select id="id-col"></select>
+          <label class="field" id="l-group" for="group-col"></label><select id="group-col"></select>
+          <label class="field" id="l-missing" for="missing"></label><input type="text" id="missing">
+        </div>
+        <div class="card">
+          <span class="label" id="l-items"></span>
+          <div class="row" style="margin-bottom:6px"><button id="btn-all"></button><button id="btn-clear"></button></div>
+          <div id="items" class="checklist"></div>
+        </div>
+      </div>
+      <div id="preview"></div>
+    </div>
+    <div id="import-banner" class="banner"></div>
+    <div class="nav"><span></span><button id="btn-next1" class="primary"></button></div>
+  </section>
+
+  <section id="page-model" class="page">
+    <h2 class="title" id="t-model"></h2>
+    <p id="detected" class="help"></p>
+    <div class="card"><span class="label" id="l-recommend"></span><div id="recommend"></div></div>
+    <div id="models" class="models"></div>
+    <div class="card">
+      <label><input type="checkbox" id="strict"> <span id="strict-label"></span></label><br>
+      <label><input type="checkbox" id="dif"> <span id="dif-label"></span></label>
+    </div>
+    <div id="category-banner" class="banner"></div>
+    <div id="notes-banner" class="banner"></div>
+    <div class="nav"><button id="btn-back2" class="btn-back"></button><button id="btn-run" class="primary"></button></div>
+  </section>
+
+  <section id="page-run" class="page">
+    <h2 class="title" id="t-run"></h2>
+    <p class="help" id="run-help"></p>
+    <progress id="run-progress" max="1" value="0"></progress>
+    <pre id="run-log" class="log"></pre>
+    <div id="run-banner" class="banner"></div>
+    <div class="nav"><button id="btn-run-back" class="btn-back"></button><button id="btn-cancel"></button></div>
+  </section>
+
+  <section id="page-results" class="page">
+    <div class="result-head">
+      <div class="meta" id="result-meta"></div>
+      <div class="row" id="export-buttons">
+        <button id="btn-excel" class="primary"></button><button id="btn-html"></button>
+        <button id="btn-pdf"></button><button id="btn-charts"></button>
+      </div>
+    </div>
+    <div id="export-banner" class="banner"></div>
+    <div id="tabs" class="tabs"></div>
+    <div id="panels"></div>
+    <div class="nav"><button id="btn-back4" class="btn-back"></button><button id="btn-new" class="primary"></button></div>
+  </section>
+</main>
+<footer>RaschLite by CSPS · Center for Social Psychology and Society</footer>
+<script>window.RASCH_TEXT = __TEXT__; window.RASCH_SAMPLES = __SAMPLES__; window.RASCH_LOGO = "__LOGO__";</script>
+<script>__ENGINE__</script>
+<script>__INTERPRET__</script>
+<script>__CHARTS__</script>
+<script>__XLSX__</script>
+<script>__APP__</script>
+</body>
+</html>

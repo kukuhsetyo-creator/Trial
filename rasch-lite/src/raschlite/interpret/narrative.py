@@ -76,7 +76,10 @@ def num(x, d: int = 2) -> str:
             return "-"
     except (TypeError, ValueError):
         return str(x)
-    return f"{float(x):.{d}f}".replace(".", ",")
+    text = f"{float(x):.{d}f}"
+    if text.startswith("-") and float(text) == 0.0:
+        text = text[1:]  # sisa pembulatan (mis. -1e-17) tidak ditampilkan sebagai "-0,00"
+    return text.replace(".", ",")
 
 
 def pct(x, d: int = 0) -> str:

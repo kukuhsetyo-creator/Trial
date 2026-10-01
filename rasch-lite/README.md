@@ -6,6 +6,10 @@ Seluruh perhitungan dan penafsiran berjalan di komputer pengguna. Aplikasi tidak
 
 ![Ringkasan 1 Menit](preview/gui/4_ringkasan.png)
 
+## Versi HTML (tanpa instalasi)
+
+Selain aplikasi Windows, RaschLite tersedia sebagai satu berkas [`web/RaschLite.html`](web/RaschLite.html) (sekitar 380 KB) yang cukup dibuka dengan klik ganda di browser modern. Versi ini bekerja sepenuhnya luring dan memiliki alur, tabel, grafik, narasi, serta ekspor Excel/HTML/PDF/grafik yang sama dengan versi desktop. Angka dan narasinya diuji identik dengan engine Python terhadap golden file (lihat [`web/README.md`](web/README.md)).
+
 ## Daftar isi
 
 1. [Instalasi untuk pengguna Windows](#instalasi-untuk-pengguna-windows)
