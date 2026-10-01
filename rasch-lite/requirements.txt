@@ -1,0 +1,9 @@
+# Dependensi runtime (daftar terkunci). Versi dipin setelah diuji pada Fase 1;
+# PySide6, matplotlib, Jinja2 ditambahkan pada fase berikutnya.
+numpy==2.4.6
+scipy==1.17.1
+pandas==3.0.6
+openpyxl==3.1.5
+
+# Pengembangan dan pengujian
+pytest==9.1.1
