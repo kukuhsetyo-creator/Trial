@@ -1,0 +1,44 @@
+#!/bin/bash
+# Mulai Aplikasi - Agen Analisis Kualitatif (macOS)
+# Aplikasi yang dibuka dari Finder hanya mendapat PATH minimal, sehingga lokasi
+# Python dicari secara eksplisit. /usr/bin/python3 sengaja dilewati: versinya
+# terlalu lama dan memanggilnya dapat memunculkan tawaran memasang Xcode.
+
+APP_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT="$(dirname "$APP_DIR")"
+JUDUL="Agen Analisis Kualitatif"
+
+dialog() {
+    /usr/bin/osascript -e "display dialog \"$1\" with title \"$JUDUL\" buttons {\"OK\"} default button \"OK\" with icon caution" >/dev/null 2>&1
+}
+
+case "$APP_DIR" in
+    */AppTranslocation/*)
+        dialog "macOS membuka aplikasi ini dari lokasi sementara, sehingga berkas pendukungnya tidak terlihat. Seret seluruh folder aplikasi ke folder Dokumen lewat Finder, lalu buka Mulai Aplikasi dari sana."
+        exit 1
+        ;;
+esac
+
+if [ ! -f "$ROOT/launcher/launcher.pyw" ]; then
+    dialog "Berkas pendukung aplikasi tidak ditemukan. Pastikan Mulai Aplikasi berada di dalam folder aplikasi yang diekstrak utuh."
+    exit 1
+fi
+
+PY=""
+for c in /Library/Frameworks/Python.framework/Versions/3.*/bin/python3 \
+         /usr/local/bin/python3 /opt/homebrew/bin/python3; do
+    [ -x "$c" ] || continue
+    if "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
+        PY="$c"
+        break
+    fi
+done
+
+if [ -z "$PY" ]; then
+    dialog "Aplikasi ini memerlukan Python 3.11 atau yang lebih baru, dan Python belum ditemukan di komputer ini. Setelah menekan OK, halaman unduhan Python akan terbuka. Setelah memasang, buka Mulai Aplikasi lagi."
+    /usr/bin/open "https://www.python.org/downloads/"
+    exit 1
+fi
+
+cd "$ROOT" || exit 1
+exec "$PY" "$ROOT/launcher/launcher.pyw" "$@"

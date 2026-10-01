@@ -9,7 +9,13 @@ kolom ``status``; promosi status hanya boleh terjadi lewat
 
 from __future__ import annotations
 
+import datetime
+import os
+import re
+import subprocess
 import sys
+import tempfile
+import traceback
 from pathlib import Path
 
 import streamlit as st
@@ -24,6 +30,14 @@ from src.env import api_key_tersedia, load_env  # noqa: E402
 load_env()
 
 METHODS_DIR = PROJECT_ROOT / "config" / "methods"
+LOGS_DIR = PROJECT_ROOT / "logs"
+DATA_RAW_DIR = PROJECT_ROOT / "data" / "raw"
+
+KEY_NAME = "ANTHROPIC_API_KEY"
+# Kunci Anthropic hanya memuat huruf, angka, tanda hubung, dan garis bawah.
+# Pola ketat ini sekaligus mencegah baris baru atau tanda sama dengan ikut
+# tertulis ke berkas .env dan merusak isinya.
+KEY_PATTERN = re.compile(r"^[A-Za-z0-9_-]{20,}$")
 
 
 def db_exists() -> bool:
@@ -35,8 +49,8 @@ def require_db() -> bool:
     if db_exists():
         return True
     st.error(
-        f"Basis data belum ada di `{DB_PATH.relative_to(PROJECT_ROOT)}`.\n\n"
-        "Jalankan lebih dahulu:\n\n```bash\npython src/db_init.py\n```"
+        "Tempat penyimpanan data belum siap. Tutup aplikasi, lalu buka kembali "
+        "lewat Mulai Aplikasi; penyiapannya akan dilakukan otomatis."
     )
     return False
 
@@ -86,7 +100,108 @@ def pending_module(
 def sidebar_footer() -> None:
     st.sidebar.divider()
     st.sidebar.caption(
-        "Seluruh kode dan kategori berstatus `proposed` sampai peneliti "
-        "mengubahnya lewat antrean peninjauan. Antarmuka ini tidak pernah "
-        "mempromosikan status secara otomatis."
+        "Semua kode dan tema yang diusulkan AI berstatus usulan sampai Anda "
+        "meninjaunya. Aplikasi tidak pernah mengesahkan apa pun secara otomatis."
     )
+
+
+# --------------------------------------------------------------------------
+# Kunci akses Anthropic
+# --------------------------------------------------------------------------
+
+def _env_path() -> Path:
+    # Dibaca saat dipanggil, bukan saat impor, agar selalu mengikuti src.env.
+    import src.env
+    return src.env.ENV_PATH
+
+
+def _baris_env_tanpa_kunci() -> list[str]:
+    path = _env_path()
+    if not path.exists():
+        return []
+    return [
+        baris for baris in path.read_text(encoding="utf-8").splitlines()
+        if not baris.strip().startswith(f"{KEY_NAME}=")
+    ]
+
+
+def _tulis_env(baris: list[str]) -> None:
+    """Menulis .env secara atomik dengan izin baca-tulis hanya untuk pemilik."""
+    path = _env_path()
+    fd, sementara = tempfile.mkstemp(dir=str(path.parent), prefix=".env.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as berkas:
+            berkas.write("\n".join(baris) + ("\n" if baris else ""))
+        try:
+            os.chmod(sementara, 0o600)
+        except OSError:
+            pass
+        os.replace(sementara, path)
+    except BaseException:
+        try:
+            os.unlink(sementara)
+        except OSError:
+            pass
+        raise
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+
+
+def simpan_kunci(kunci: str) -> None:
+    """Menyimpan kunci ke .env dan ke lingkungan proses yang sedang berjalan.
+
+    Kunci tidak pernah ditulis ke basis data, audit trail, maupun berkas log.
+    """
+    kunci = (kunci or "").strip()
+    if not KEY_PATTERN.match(kunci):
+        raise ValueError(
+            "Kunci tidak dikenali. Salin ulang kunci dari halaman Anthropic secara utuh, "
+            "tanpa spasi atau tanda kutip."
+        )
+    _tulis_env(_baris_env_tanpa_kunci() + [f"{KEY_NAME}={kunci}"])
+    os.environ[KEY_NAME] = kunci
+
+
+def hapus_kunci() -> None:
+    _tulis_env(_baris_env_tanpa_kunci())
+    os.environ.pop(KEY_NAME, None)
+
+
+# --------------------------------------------------------------------------
+# Catatan galat dan folder data
+# --------------------------------------------------------------------------
+
+def catat_galat(konteks: str, exc: BaseException) -> None:
+    """Menulis rincian teknis ke logs/app.log, dengan kunci akses disamarkan."""
+    teks = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    kunci = os.environ.get(KEY_NAME)
+    if kunci:
+        teks = teks.replace(kunci, "[kunci disamarkan]")
+    try:
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        stempel = datetime.datetime.now().isoformat(timespec="seconds")
+        with (LOGS_DIR / "app.log").open("a", encoding="utf-8") as berkas:
+            berkas.write(f"\n===== {stempel} {konteks} =====\n{teks}")
+    except OSError:
+        pass
+
+
+def buka_folder(path: Path) -> str | None:
+    """Membuka folder di pengelola berkas sistem. Mengembalikan pesan bila gagal.
+
+    Fungsi ini hanya membuka folder untuk dilihat; ia tidak menulis apa pun.
+    """
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(str(path))  # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(path)], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+        else:
+            subprocess.Popen(["xdg-open", str(path)], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+    except OSError:
+        return f"Folder tidak dapat dibuka otomatis. Bukalah secara manual di: {path}"
+    return None

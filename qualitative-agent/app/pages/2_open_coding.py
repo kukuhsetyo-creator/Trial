@@ -37,8 +37,8 @@ finally:
 if not runs or not units:
     st.info(
         "Halaman ini memerlukan sekurang-kurangnya satu sesi analisis dan satu unit makna. "
-        "Keduanya lahir dari lapisan ingest yang belum dibangun (langkah 2), sehingga untuk "
-        "sementara hanya dapat diisi lewat basis data secara langsung."
+        "Masukkan dokumen lewat halaman Ingest, lalu mulai sesi analisis dari halaman "
+        "beranda."
     )
     st.stop()
 
@@ -69,8 +69,8 @@ konteks = st.text_input(
 
 if not api_key_tersedia():
     st.warning(
-        "`ANTHROPIC_API_KEY` belum diset, sehingga pemanggilan model tidak dapat dilakukan. "
-        "Salin `.env.example` menjadi `.env` dan isi kuncinya."
+        "Kunci akses Anthropic belum diisi, sehingga AI belum dapat dipanggil. "
+        "Isi kuncinya di halaman Pengaturan."
     )
 
 if st.button("Usulkan kode untuk unit ini", type="primary",

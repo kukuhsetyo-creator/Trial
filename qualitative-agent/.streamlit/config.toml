@@ -1,0 +1,16 @@
+# Konfigurasi antarmuka untuk pemakai awam. Aplikasi hanya dapat dibuka dari
+# komputer ini (127.0.0.1), dan rincian galat teknis tidak ditampilkan di
+# peramban: peluncur menyalinnya ke logs/app.log.
+
+[server]
+address = "127.0.0.1"
+headless = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+# Nilai lama `false` kini berarti "stacktrace" pada Streamlit 1.63 dan justru
+# menampilkan traceback. "none" hanya menampilkan pesan umum di peramban.
+showErrorDetails = "none"
+toolbarMode = "minimal"

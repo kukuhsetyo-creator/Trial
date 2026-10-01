@@ -1,0 +1,4 @@
+# Berkas batch Windows harus berakhiran baris CRLF; skrip macOS/Linux harus LF.
+*.bat text eol=crlf
+*.sh text eol=lf
+**/Contents/MacOS/run text eol=lf

@@ -21,17 +21,31 @@ generik berlabel berbeda.
 
 ## Menjalankan
 
+**Pemakai awam** cukup mengikuti `PANDUAN-PEMAKAI.md`: pasang Python sekali, ekstrak
+ZIP, lalu klik dua kali `Mulai Aplikasi` (Windows `.bat`, macOS `.app`) atau
+`mulai-aplikasi.sh` (Linux). Peluncur di `launcher/launcher.pyw` hanya memakai pustaka
+standar dan mengurus sisanya: membuat `.venv`, memasang `requirements.txt` hanya bila
+sidik SHA-256-nya berubah, menyiapkan basis data, menjalankan Streamlit yang terikat ke
+`127.0.0.1`, lalu membuka peramban. Kunci akses diisi lewat halaman Pengaturan dan
+disimpan di `.env` (izin 600).
+
+**Pengembang**:
+
 ```bash
 pip install -r requirements.txt
-cp .env.example .env          # isi ANTHROPIC_API_KEY
-python src/db_init.py         # buat dan verifikasi basis data
-streamlit run app/main.py     # antarmuka lokal
+python src/db_init.py                     # buat dan verifikasi basis data
+streamlit run app/main.py                 # antarmuka lokal
 python -m unittest discover -s tests
+python launcher/launcher.pyw --headless-test   # uji peluncur tanpa jendela
+python tools/buat_paket.py                # dist/AgenKualitatif-YYYYMMDD.zip
 ```
 
-Letakkan berkas penelitian ke `data/raw/` secara manual. Folder itu read-only bagi
-seluruh kode; tidak ada fungsi yang menulis ke sana, dan antarmuka sengaja tidak
-menyediakan widget unggahan.
+Catatan peluncur, pemasangan, dan galat aplikasi tersimpan di `logs/`.
+
+Letakkan berkas penelitian ke `data/raw/` secara manual, atau lewat tombol "Buka folder
+data penelitian" di beranda yang hanya membuka folder itu di pengelola berkas. Folder
+itu read-only bagi seluruh kode; tidak ada fungsi yang menulis ke sana, dan antarmuka
+sengaja tidak menyediakan widget unggahan.
 
 ## Alur RTA
 

@@ -23,3 +23,8 @@ qualitative-agent/data/raw/*
 !qualitative-agent/data/raw/.gitkeep
 qualitative-agent/data/processed/*
 !qualitative-agent/data/processed/.gitkeep
+
+# lingkungan terpasang, catatan peluncur, dan paket distribusi agen kualitatif
+qualitative-agent/.venv/
+qualitative-agent/logs/
+qualitative-agent/dist/

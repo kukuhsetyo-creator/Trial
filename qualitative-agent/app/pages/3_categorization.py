@@ -50,7 +50,8 @@ with tab_tema:
     else:
         punya_kunci = bool(api_key_tersedia())
         if not punya_kunci:
-            st.warning("`ANTHROPIC_API_KEY` belum diset; tahap yang memanggil model dinonaktifkan.")
+            st.warning("Kunci akses Anthropic belum diisi; tahap yang memanggil AI dinonaktifkan. "
+                       "Isi kuncinya di halaman Pengaturan.")
 
         aksi = st.columns(3)
         if aksi[0].button("Bentuk tema", disabled=not punya_kunci):
