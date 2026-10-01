@@ -1,0 +1,48 @@
+# Build RaschLite untuk Windows di mesin Windows asli GitHub Actions:
+# tes, PyInstaller --onedir, uji mandiri executable, waktu startup, dan installer Inno Setup.
+# Hasil (installer, laporan build, hasil uji mandiri) diunggah sebagai artifact workflow.
+name: Build RaschLite Windows
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "rasch-lite/**"
+      - ".github/workflows/build-windows.yml"
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: rasch-lite
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        id: py
+        with:
+          python-version: "3.11"
+
+      - name: Pastikan Inno Setup 6 tersedia
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe tidak ditemukan" }
+
+      - name: Build, tes, uji mandiri, installer
+        run: scripts\build_windows.ps1 -PythonExe "${{ steps.py.outputs.python-path }}"
+
+      - name: Unggah installer dan laporan
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RaschLite-windows
+          path: |
+            rasch-lite/dist/installer/*.exe
+            rasch-lite/dist/build_report.txt
+            rasch-lite/dist/selftest/selftest_result.txt
+          if-no-files-found: warn
+          retention-days: 30

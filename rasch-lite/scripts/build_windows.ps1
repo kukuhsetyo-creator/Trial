@@ -18,6 +18,10 @@
 .PARAMETER PythonVersion
     Versi Python 64-bit yang dipakai lewat peluncur 'py' (default 3.11; 3.12 juga didukung).
 
+.PARAMETER PythonExe
+    Path python.exe tertentu untuk membuat virtualenv (misalnya di CI). Bila kosong, dipakai
+    peluncur 'py' dengan -PythonVersion.
+
 .PARAMETER SkipTests
     Lewati pytest (tidak disarankan untuk build rilis).
 
@@ -26,6 +30,7 @@
 #>
 param(
     [string]$PythonVersion = "3.11",
+    [string]$PythonExe = "",
     [switch]$SkipTests,
     [switch]$SkipInstaller
 )
@@ -53,6 +58,9 @@ function Invoke-Checked([string]$File, [string[]]$Arguments, [string]$What) {
 
 # --- 1. Virtualenv dan dependensi ------------------------------------------------------
 Write-Step "1/7 Virtualenv Python $PythonVersion (.venv-win)"
+if (-not (Test-Path $Py) -and $PythonExe) {
+    Invoke-Checked $PythonExe @("-m", "venv", $Venv) "Pembuatan virtualenv"
+}
 if (-not (Test-Path $Py)) {
     if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
         throw "Peluncur 'py' tidak ditemukan. Pasang Python $PythonVersion 64-bit dari python.org (centang 'py launcher')."
