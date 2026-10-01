@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agen Analisis Kualitatif</title>
+<title>Qualitative Analysis Form · CSPS</title>
 <!--
-  Agen Analisis Kualitatif, edisi peramban.
+  Qualitative Analysis Form (CSPS), edisi peramban.
   Satu berkas HTML yang berjalan sepenuhnya di peramban: data tersimpan di
   IndexedDB peramban ini, dan satu-satunya yang dikirim keluar adalah teks yang
-  diminta peneliti untuk dianalisis, langsung ke api.anthropic.com.
+  diminta peneliti untuk dianalisis, langsung ke penyedia AI yang ia pilih
+  (Anthropic, Google, Alibaba Qwen, DeepSeek, OpenAI, OpenRouter, layanan lain
+  yang kompatibel OpenAI, atau Ollama di komputer sendiri).
 
   Pustaka pihak ketiga yang disematkan:
     mammoth.js 1.8.0   (BSD-2-Clause)  pembaca .docx
@@ -167,7 +169,7 @@ footer { max-width: 1080px; margin: 0 auto; padding: 16px 24px 32px; border-top:
     <img src="data:image/png;base64,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" alt="Logo CSPS" width="129" height="40">
     <div class="bar" aria-hidden="true"></div>
     <div>
-      <h1>Agen Analisis Kualitatif</h1>
+      <h1>Qualitative Analysis Form</h1>
       <div class="tag">Center for Social Psychology and Society</div>
     </div>
   </div>
@@ -252,7 +254,7 @@ len1=val.length;len1>k;k++)item=val[k],childNode={},childNode[key]=item,lastChil
 <script>
 "use strict";
 /*
- * Agen Analisis Kualitatif, edisi peramban.
+ * Qualitative Analysis Form (CSPS), edisi peramban.
  *
  * Padanan JavaScript dari versi Python di qualitative-agent/. Aturan proyek
  * (CLAUDE.md) ditegakkan dengan cara yang sama:
@@ -273,10 +275,11 @@ len1=val.length;len1>k;k++)item=val[k],childNode={},childNode[key]=item,lastChil
 // Konstanta
 // ===========================================================================
 
-const API_URL = "https://api.anthropic.com/v1/messages";
-const API_VERSION = "2023-06-01";
-const DEFAULT_MODEL = "claude-sonnet-5";
+const APP_NAME = "Qualitative Analysis Form";
+const ANTHROPIC_VERSION = "2023-06-01";
 const MAX_ATTEMPTS = 4;
+// Pengenal format dan nama basis data sengaja tidak ikut diganti saat aplikasi
+// berganti nama, agar data dan cadangan yang sudah ada tetap terbaca.
 const BACKUP_FORMAT = "agen-kualitatif-backup";
 const BACKUP_VERSION = 1;
 const TABLES = ["documents", "units", "method_runs", "codes", "categories",
@@ -291,7 +294,41 @@ const METHODS = {
   ipa: { name: "Interpretative Phenomenological Analysis", available: false },
   grounded_theory: { name: "Grounded Theory", available: false },
 };
-const KEY_PATTERN = /^[A-Za-z0-9_-]{20,}$/;
+// Kunci akses: karakter cetak tanpa spasi. Pola longgar karena format kunci
+// berbeda antarpenyedia; spasi, baris baru, dan tanda kutip tetap ditolak.
+const KEY_PATTERN = /^[\x21-\x7E]{8,}$/;
+const NO_QUOTES = /^[^"'`]*$/;
+
+// Penyedia AI. kind menentukan bentuk permintaan: "anthropic", "gemini", atau
+// "openai" (Chat Completions yang dipakai bersama oleh banyak penyedia).
+// browserVerified: akses langsung dari berkas HTML (file://) sudah diuji.
+// Nama model bawaan dapat diubah pemakai di halaman Pengaturan.
+const PROVIDERS = {
+  anthropic: { label: "Claude (Anthropic)", kind: "anthropic", url: "https://api.anthropic.com/v1/messages",
+    model: "claude-sonnet-5", needsKey: true, browserVerified: true,
+    keyHelp: "Buat kunci di <b>platform.claude.com</b>, bagian <i>API Keys</i>." },
+  google: { label: "Gemini (Google)", kind: "gemini", url: "https://generativelanguage.googleapis.com/v1beta",
+    model: "gemini-2.5-flash", needsKey: true, browserVerified: true,
+    keyHelp: "Buat kunci di <b>aistudio.google.com</b>, menu <i>Get API key</i>." },
+  qwen: { label: "Qwen (Alibaba Cloud)", kind: "openai", url: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    model: "qwen-plus", needsKey: true, editableUrl: true,
+    keyHelp: "Buat kunci di <b>Alibaba Cloud Model Studio</b> (DashScope). Untuk akun wilayah Tiongkok, ganti alamat layanan menjadi <code>https://dashscope.aliyuncs.com/compatible-mode/v1</code>." },
+  deepseek: { label: "DeepSeek", kind: "openai", url: "https://api.deepseek.com",
+    model: "deepseek-chat", needsKey: true,
+    keyHelp: "Buat kunci di <b>platform.deepseek.com</b>, bagian <i>API Keys</i>." },
+  openai: { label: "GPT (OpenAI)", kind: "openai", url: "https://api.openai.com/v1",
+    model: "gpt-5.6", needsKey: true,
+    keyHelp: "Buat kunci di <b>platform.openai.com</b>, bagian <i>API keys</i>." },
+  openrouter: { label: "OpenRouter (Qwen, DeepSeek, Llama, dll. dengan satu kunci)", kind: "openai", url: "https://openrouter.ai/api/v1",
+    model: "deepseek/deepseek-chat", needsKey: true,
+    keyHelp: "Buat kunci di <b>openrouter.ai</b>, bagian <i>Keys</i>. Nama model ditulis dengan awalan penyedianya, misalnya <code>qwen/…</code> atau <code>deepseek/…</code>." },
+  ollama: { label: "Ollama (model lokal di komputer ini)", kind: "openai", url: "http://localhost:11434/v1",
+    model: "qwen2.5", needsKey: false, editableUrl: true, local: true,
+    keyHelp: "Tidak perlu kunci. Pasang Ollama, unduh modelnya, lalu izinkan akses dari peramban dengan menjalankan Ollama memakai pengaturan <code>OLLAMA_ORIGINS=*</code>." },
+  custom: { label: "Lainnya (kompatibel OpenAI)", kind: "openai", url: "",
+    model: "", needsKey: false, editableUrl: true,
+    keyHelp: "Untuk layanan lain yang menyediakan antarmuka kompatibel OpenAI. Isi alamat layanan, nama model, dan kunci (bila diperlukan) sesuai dokumentasinya." },
+};
 const SEG_MAX = 1200;
 const SEG_MIN = 40;
 
@@ -580,60 +617,110 @@ function logFailure(runId, stage, prompt, model, error, attempts) {
   });
 }
 
-function apiKey() { return (SETTINGS && SETTINGS.apiKey) || ""; }
+function providerId() { return (SETTINGS && PROVIDERS[SETTINGS.provider]) ? SETTINGS.provider : "anthropic"; }
+function provider() { return PROVIDERS[providerId()]; }
+function providerConf(id = providerId()) {
+  const c = (SETTINGS.providers && SETTINGS.providers[id]) || {};
+  return { key: c.key || "", model: c.model || PROVIDERS[id].model, url: (c.url || PROVIDERS[id].url).replace(/\/+$/, "") };
+}
+function apiKey() { return providerConf().key; }
+// Siap memanggil AI: kunci terisi bila penyedianya memerlukan, dan alamat
+// serta nama model tidak kosong.
+function aiReady() {
+  const c = providerConf();
+  return (!provider().needsKey || !!c.key) && !!c.url && !!c.model;
+}
+const aiLabel = () => `${provider().label} · ${providerConf().model || "model belum diisi"}`;
 
-async function callClaude(prompt, { stage, runId = null, maxTokens = 2048 }) {
-  const key = apiKey();
-  if (!key) throw new UserError("Kunci akses Anthropic belum diisi. Isi di halaman Pengaturan.");
-  const model = DEFAULT_MODEL;
+function buildRequest(p, c, prompt, maxTokens) {
+  if (p.kind === "anthropic") {
+    return { url: c.url, headers: { "x-api-key": c.key, "anthropic-version": ANTHROPIC_VERSION,
+      "anthropic-dangerous-direct-browser-access": "true" },
+      body: { model: c.model, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] } };
+  }
+  if (p.kind === "gemini") {
+    // Batas keluaran tidak dikirim: pada model Gemini yang berpikir, batas yang
+    // kecil habis untuk berpikir dan jawabannya kosong.
+    return { url: `${c.url}/models/${encodeURIComponent(c.model)}:generateContent`, headers: { "x-goog-api-key": c.key },
+      body: { contents: [{ role: "user", parts: [{ text: prompt }] }] } };
+  }
+  const headers = c.key ? { authorization: `Bearer ${c.key}` } : {};
+  return { url: `${c.url}/chat/completions`, headers,
+    body: { model: c.model, messages: [{ role: "user", content: prompt }] } };
+}
+
+function parseResponse(p, data, c) {
+  if (p.kind === "anthropic") {
+    return { text: (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join(""),
+      model: data.model || c.model, input_tokens: data.usage?.input_tokens, output_tokens: data.usage?.output_tokens };
+  }
+  if (p.kind === "gemini") {
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    return { text: parts.filter((x) => typeof x.text === "string" && !x.thought).map((x) => x.text).join(""),
+      model: data.modelVersion || c.model, input_tokens: data.usageMetadata?.promptTokenCount,
+      output_tokens: data.usageMetadata?.candidatesTokenCount };
+  }
+  const content = data.choices?.[0]?.message?.content;
+  const text = Array.isArray(content) ? content.map((x) => x.text || "").join("") : (content || "");
+  return { text, model: data.model || c.model, input_tokens: data.usage?.prompt_tokens, output_tokens: data.usage?.completion_tokens };
+}
+
+function classifyFailure(status, detail) {
+  if (status === 401 || status === 403) return "auth";
+  if (status === 400 && /api[ _-]?key|API_KEY_INVALID|invalid.{0,20}(key|token)|authentication/i.test(detail)) return "auth";
+  if (status === 402) return "billing";
+  if (status === 404) return "model";
+  if (status === 400 && /model/i.test(detail) && /not.{0,12}(found|exist|support)|invalid|unknown/i.test(detail)) return "model";
+  if (status === 429) return "rate";
+  if (status >= 500) return "server";
+  return "request";
+}
+
+// Satu-satunya pintu ke penyedia AI mana pun. Pemanggilan yang berhasil dicatat
+// oleh pemanggilnya lewat logCall() sebelum hasilnya dipakai; pemanggilan yang
+// gagal total dicatat di sini lewat logFailure().
+async function callModel(prompt, { stage, runId = null, maxTokens = 2048 }) {
+  const id = providerId(), p = PROVIDERS[id], c = providerConf(id);
+  if (p.needsKey && !c.key) throw new UserError(`Kunci akses untuk ${p.label} belum diisi. Isi di halaman Pengaturan.`);
+  if (!c.url || !c.model) throw new UserError(`Alamat layanan atau nama model untuk ${p.label} belum diisi. Lengkapi di halaman Pengaturan.`);
+  const modelTag = `${id}/${c.model}`;
+  const req = buildRequest(p, c, prompt, maxTokens);
   let lastError = "", kind = "other", attempts = 0;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     attempts = attempt;
     let res;
     try {
-      res = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": key,
-          "anthropic-version": API_VERSION,
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
-        body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
-      });
+      res = await fetch(req.url, { method: "POST", headers: { "content-type": "application/json", ...req.headers },
+        body: JSON.stringify(req.body) });
     } catch (e) {
       lastError = `network: ${e.message}`; kind = "network";
-      if (attempt < MAX_ATTEMPTS) { await sleep(2000 * 2 ** (attempt - 1)); continue; }
+      if (attempt < MAX_ATTEMPTS && !p.local) { await sleep(2000 * 2 ** (attempt - 1)); continue; }
       break;
     }
     if (res.ok) {
-      const data = await res.json();
-      return {
-        text: (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join(""),
-        model: data.model || model,
-        input_tokens: data.usage?.input_tokens, output_tokens: data.usage?.output_tokens,
-        stop_reason: data.stop_reason,
-      };
+      const parsed = parseResponse(p, await res.json(), c);
+      return { ...parsed, model: `${id}/${parsed.model}` };
     }
     let detail = "";
     try { detail = JSON.stringify(await res.json()); } catch (e) { detail = res.statusText; }
     lastError = `Error code: ${res.status} - ${detail}`;
-    if (res.status === 401 || res.status === 403) { kind = "auth"; break; }
-    if (res.status === 429 || res.status >= 500) {
-      kind = res.status === 429 ? "rate" : "server";
-      if (attempt < MAX_ATTEMPTS) { await sleep(2000 * 2 ** (attempt - 1)); continue; }
-      break;
-    }
-    kind = "request"; break;
+    kind = classifyFailure(res.status, detail);
+    if ((kind === "rate" || kind === "server") && attempt < MAX_ATTEMPTS) { await sleep(2000 * 2 ** (attempt - 1)); continue; }
+    break;
   }
-  logFailure(runId, stage, prompt, model, lastError, attempts);
+  logFailure(runId, stage, prompt, modelTag, lastError, attempts);
   await saveState();
+  const nama = p.label;
   const pesan = {
-    auth: "Kunci ditolak oleh Anthropic. Periksa kunci di halaman Pengaturan.",
-    network: "Tidak dapat menghubungi Anthropic. Periksa sambungan internet, lalu coba lagi.",
-    rate: "Anthropic sedang membatasi permintaan dari akun ini. Tunggu beberapa menit, lalu coba lagi.",
-    server: "Layanan Anthropic sedang bermasalah. Coba lagi beberapa saat lagi.",
-  }[kind] || "Permintaan ke Anthropic gagal. Rinciannya tercatat di halaman Audit.";
+    auth: `Kunci ditolak oleh ${nama}. Periksa kunci di halaman Pengaturan.`,
+    billing: `${nama} menolak permintaan karena saldo atau kuota akun tidak mencukupi.`,
+    model: `Model "${c.model}" tidak dikenali oleh ${nama}. Periksa nama model di halaman Pengaturan.`,
+    network: p.local
+      ? "Ollama tidak dapat dihubungi. Pastikan Ollama sedang berjalan dan dijalankan dengan pengaturan OLLAMA_ORIGINS=* agar menerima akses dari peramban."
+      : `Tidak dapat menghubungi ${nama}. Periksa sambungan internet. Bila internet normal, ${nama} mungkin tidak mengizinkan akses langsung dari peramban; pakai model yang sama lewat OpenRouter.`,
+    rate: `${nama} sedang membatasi permintaan dari akun ini. Tunggu beberapa menit, lalu coba lagi.`,
+    server: `Layanan ${nama} sedang bermasalah. Coba lagi beberapa saat lagi.`,
+  }[kind] || `Permintaan ke ${nama} gagal. Rinciannya tercatat di halaman Audit.`;
   throw new ApiError(kind, pesan);
 }
 
@@ -775,7 +862,7 @@ const RTA = {
     const doc = byId("documents", unit.document_id);
     const context = doc.title + (doc.participant_id ? ` · partisipan ${doc.participant_id}` : "");
     const prompt = fill(RTA_PROMPTS.open_coding, { document_context: context, unit_text: unit.text }) + CODE_CONTRACT;
-    const response = await callClaude(prompt, { stage: "open_coding", runId });
+    const response = await callModel(prompt, { stage: "open_coding", runId });
     logCall(runId, "open_coding", prompt, response);   // dicatat sebelum hasil dipakai
     await saveState();
     const proposals = extractJsonArray(response.text).filter((p) => p && typeof p === "object");
@@ -799,7 +886,7 @@ const RTA = {
     const codes = codesOfRun(runId, ["proposed", "validated", "revised"]);
     if (!codes.length) throw new UserError("Belum ada kode yang dapat dijadikan dasar pembentukan tema.");
     const prompt = fill(RTA_PROMPTS.theme_generation, { code_list: this.bundleCodes(codes) }) + THEME_CONTRACT;
-    const response = await callClaude(prompt, { stage: "theme_generation", runId, maxTokens: 4096 });
+    const response = await callModel(prompt, { stage: "theme_generation", runId, maxTokens: 4096 });
     logCall(runId, "theme_generation", prompt, response);
     await saveState();
     const valid = new Set(codes.map((c) => c.id));
@@ -825,7 +912,7 @@ const RTA = {
     const bundle = themes.map((t) => `Tema [${t.id}] ${t.label}\n  definisi kerja: ${t.definition || "(belum ada)"}\n` +
       codesOfCategory(t.id).map((k) => `  - ${k.label}: "${(unitOf(k)?.text || "").slice(0, 160)}"\n`).join("")).join("\n");
     const prompt = fill(RTA_PROMPTS.theme_review, { theme_bundle: bundle });
-    const response = await callClaude(prompt, { stage: "theme_review", runId, maxTokens: 4096 });
+    const response = await callModel(prompt, { stage: "theme_review", runId, maxTokens: 4096 });
     logCall(runId, "theme_review", prompt, response);
     saveMemo(runId, response.text, "model");
     await saveState();
@@ -846,7 +933,7 @@ const RTA = {
         theme_label: t.label, theme_definition: t.definition || "(belum ada)",
         codes_and_quotes: codes.map((k) => `- ${k.label}: "${(unitOf(k)?.text || "").slice(0, 200)}"`).join("\n") || "(belum ada kode tertaut)",
       }) + DEFINITION_CONTRACT;
-      const response = await callClaude(prompt, { stage: "theme_definition_naming", runId });
+      const response = await callModel(prompt, { stage: "theme_definition_naming", runId });
       logCall(runId, "theme_definition_naming", prompt, response);
       await saveState();
       const data = extractJsonArray(response.text)[0];
@@ -874,7 +961,7 @@ const RTA = {
 
   async reflexiveMemo(runId, stage, context) {
     const prompt = fill(RTA_PROMPTS.reflexive_memo, { stage, context });
-    const response = await callClaude(prompt, { stage: "reflexive_memo", runId });
+    const response = await callModel(prompt, { stage: "reflexive_memo", runId });
     logCall(runId, "reflexive_memo", prompt, response);
     saveMemo(runId, response.text, "model");
     await saveState();
@@ -892,7 +979,7 @@ function backupJson() {
 }
 
 function validateBackup(data) {
-  if (!data || data.format !== BACKUP_FORMAT) throw new UserError("Berkas ini bukan cadangan Agen Analisis Kualitatif.");
+  if (!data || data.format !== BACKUP_FORMAT) throw new UserError(`Berkas ini bukan cadangan ${APP_NAME}.`);
   if (data.version > BACKUP_VERSION) throw new UserError("Cadangan ini berasal dari versi aplikasi yang lebih baru.");
   for (const t of TABLES) if (!Array.isArray(data[t])) throw new UserError(`Cadangan tidak lengkap: bagian ${t} hilang.`);
   const s = emptyState();
@@ -940,7 +1027,7 @@ function runPicker() {
 }
 
 const chip = (status) => `<span class="chip ${esc(status)}">${{ proposed: "usulan", validated: "sah", revised: "direvisi", rejected: "ditolak" }[status] || esc(status)}</span>`;
-const keyWarning = () => (apiKey() ? "" : `<div class="note warn">Kunci akses Anthropic belum diisi, sehingga AI belum dapat dipanggil. <a href="#" data-go="settings">Isi di Pengaturan</a>.</div>`);
+const keyWarning = () => (aiReady() ? "" : `<div class="note warn">Pengaturan AI untuk ${esc(provider().label)} belum lengkap, sehingga AI belum dapat dipanggil. <a href="#" data-go="settings">Lengkapi di Pengaturan</a>.</div>`);
 const lastMessage = () => (UI.last ? `<div class="note ${UI.last.kind}">${esc(UI.last.text)}</div>` : "");
 
 const VIEWS = {
@@ -954,9 +1041,10 @@ const VIEWS = {
       <h2>Beranda</h2>
       ${keyWarning()}${backupWarn}${lastMessage()}
       <div class="card">
-        <p>Semua data penelitian tersimpan di peramban ini. Hanya potongan teks yang Anda minta untuk dianalisis yang dikirim ke AI Anthropic, dan setiap pengiriman tercatat di halaman Audit.</p>
+        <p>Semua data penelitian tersimpan di peramban ini. Hanya potongan teks yang Anda minta untuk dianalisis yang dikirim ke penyedia AI pilihan Anda, dan setiap pengiriman tercatat di halaman Audit.</p>
+        <p class="muted">AI yang aktif: <b>${esc(aiLabel())}</b> · <a href="#" data-go="settings">ubah</a></p>
         <ol class="steps">
-          <li>Isi kunci akses di <a href="#" data-go="settings">Pengaturan</a>.</li>
+          <li>Pilih penyedia AI dan isi kuncinya di <a href="#" data-go="settings">Pengaturan</a>.</li>
           <li>Masukkan berkas penelitian di <a href="#" data-go="ingest">Masukkan berkas</a>.</li>
           <li>Mulai sesi analisis di bawah ini.</li>
           <li>Minta usulan kode di <a href="#" data-go="coding">Usulan kode</a>.</li>
@@ -987,19 +1075,38 @@ const VIEWS = {
   },
 
   settings() {
+    const id = providerId(), p = provider(), c = providerConf();
+    const disimpan = (SETTINGS.providers && SETTINGS.providers[id]) || {};
     return `
       <h2>Pengaturan</h2>${lastMessage()}
       <div class="card">
-        <h3 style="margin-top:0">Kunci akses Anthropic</h3>
-        <p>Aplikasi memanggil AI milik Anthropic untuk mengusulkan kode dan tema. Buat kunci di <b>platform.claude.com</b>: masuk, buka bagian <i>API Keys</i>, buat kunci baru, lalu tempel di bawah. Pemakaian AI ditagihkan ke akun Anthropic Anda.</p>
-        <p class="muted">Kunci disimpan hanya di peramban ini, tidak pernah ditampilkan ulang, tidak dicatat di audit, dan tidak ikut dalam berkas cadangan. Siapa pun yang memakai akun komputer dan peramban ini dapat memakai kunci tersebut; hapus kunci bila komputer dipakai bersama.</p>
-        ${apiKey() ? `<div class="note ok">Kunci akses sudah tersimpan.</div>` : `<div class="note warn">Kunci akses belum diisi.</div>`}
-        <label for="key">Tempel kunci akses di sini</label>
-        <input type="password" id="key" placeholder="sk-ant-..." autocomplete="off">
+        <h3>Penyedia AI</h3>
+        <p>Pilih AI yang akan mengusulkan kode dan tema. Pemakaian AI ditagihkan ke akun Anda di penyedia tersebut.</p>
+        <label for="provider">Penyedia</label>
+        <select id="provider" data-action="pick-provider">
+          ${Object.entries(PROVIDERS).map(([k, v]) => `<option value="${k}" ${k === id ? "selected" : ""}>${esc(v.label)}</option>`).join("")}
+        </select>
+        <p class="muted" style="margin-top:12px">${p.keyHelp}</p>
+        ${p.local
+          ? `<div class="note ok">Dengan Ollama, teks penelitian diproses di komputer ini dan tidak dikirim ke internet.</div>`
+          : `<div class="note info">Teks yang Anda analisis akan dikirim ke <b>${esc(p.label)}</b>. Pastikan hal ini sesuai dengan persetujuan etik dan persetujuan partisipan penelitian Anda.${p.browserVerified ? "" : " Akses langsung dari peramban ke penyedia ini belum diuji; bila tidak tersambung, pakai model yang sama lewat OpenRouter."}</div>`}
+      </div>
+      <div class="card">
+        <h3>Pengaturan ${esc(p.label)}</h3>
+        <div class="row">
+          <div><label for="model">Nama model</label><input type="text" id="model" value="${esc(disimpan.model || "")}" placeholder="${esc(p.model || "contoh: nama-model")}"></div>
+          ${p.editableUrl ? `<div><label for="base-url">Alamat layanan</label><input type="text" id="base-url" value="${esc(disimpan.url || "")}" placeholder="${esc(p.url || "https://…/v1")}"></div>` : ""}
+        </div>
+        <p class="muted" style="margin-top:8px">Kosongkan untuk memakai nilai bawaan${p.model ? ` (<code>${esc(p.model)}</code>)` : ""}. Nama model dapat dilihat di dokumentasi penyedia.</p>
+        ${p.needsKey || id === "custom" ? `
+          ${c.key ? `<div class="note ok">Kunci akses sudah tersimpan.</div>` : `<div class="note warn">Kunci akses belum diisi.</div>`}
+          <label for="key">Tempel kunci akses di sini</label>
+          <input type="password" id="key" autocomplete="off" placeholder="${c.key ? "biarkan kosong untuk mempertahankan kunci yang tersimpan" : "kunci akses"}">` : ""}
+        <p class="muted" style="margin-top:8px">Kunci disimpan hanya di peramban ini, terpisah untuk setiap penyedia, tidak pernah ditampilkan ulang, tidak dicatat di audit, dan tidak ikut dalam berkas cadangan. Hapus kunci bila komputer dipakai bersama.</p>
         <div class="actions">
-          <button class="btn primary" data-action="save-key">Simpan kunci</button>
-          <button class="btn" data-action="test-key" ${apiKey() ? "" : "disabled"}>Uji kunci</button>
-          <button class="btn danger" data-action="delete-key" ${apiKey() ? "" : "disabled"}>Hapus kunci</button>
+          <button class="btn primary" data-action="save-key">Simpan pengaturan</button>
+          <button class="btn" data-action="test-key" ${aiReady() ? "" : "disabled"}>Uji koneksi</button>
+          <button class="btn danger" data-action="delete-key" ${c.key ? "" : "disabled"}>Hapus kunci</button>
         </div>
       </div>`;
   },
@@ -1041,19 +1148,19 @@ const VIEWS = {
         <p class="muted">${esc(RTA_PROMPTS.philosophy)}</p>
         <div class="progress" id="prog" ${UI.busy ? "" : "hidden"}><div></div></div>
         <div class="actions">
-          <button class="btn primary" data-action="code-all" ${!apiKey() || UI.busy || !pending.length ? "disabled" : ""}>Usulkan kode untuk ${pending.length} unit yang belum dikode</button>
+          <button class="btn primary" data-action="code-all" ${!aiReady() || UI.busy || !pending.length ? "disabled" : ""}>Usulkan kode untuk ${pending.length} unit yang belum dikode</button>
           <button class="btn" data-action="cancel" ${UI.busy ? "" : "hidden"}>Hentikan</button>
         </div>
       </div>
       ${S.documents.map((d) => {
         const du = units.filter((u) => u.document_id === d.id).sort((a, b) => a.sequence_index - b.sequence_index);
         return `<details class="card"><summary><b>${esc(d.title)}</b> · ${du.length} unit</summary>
-          <div class="actions"><button class="btn" data-action="familiarize" data-doc="${d.id}" ${!apiKey() || UI.busy ? "disabled" : ""}>Buat memo pembiasaan untuk dokumen ini</button></div>
+          <div class="actions"><button class="btn" data-action="familiarize" data-doc="${d.id}" ${!aiReady() || UI.busy ? "disabled" : ""}>Buat memo pembiasaan untuk dokumen ini</button></div>
           ${du.map((u) => {
             const codes = S.codes.filter((c) => c.unit_id === u.id && c.method_run_id === runId);
             return `<div style="margin:12px 0"><blockquote>${u.speaker ? `<b>${esc(u.speaker)}:</b> ` : ""}${esc(u.text)}</blockquote>
               ${codes.map((c) => `<div>${chip(c.status)} <b>${esc(c.label)}</b> <span class="muted">${esc(c.justification || "")}</span></div>`).join("")}
-              <button class="btn" data-action="code-one" data-unit="${u.id}" ${!apiKey() || UI.busy ? "disabled" : ""}>${codes.length ? "Minta usulan tambahan" : "Usulkan kode"}</button></div>`;
+              <button class="btn" data-action="code-one" data-unit="${u.id}" ${!aiReady() || UI.busy ? "disabled" : ""}>${codes.length ? "Minta usulan tambahan" : "Usulkan kode"}</button></div>`;
           }).join("")}</details>`;
       }).join("")}`;
   },
@@ -1065,7 +1172,7 @@ const VIEWS = {
     const themes = S.categories.filter((k) => k.method_run_id === runId);
     const queue = codesOfRun(runId, ["proposed"]);
     const counts = (st) => codesOfRun(runId, [st]).length;
-    const dis = !apiKey() || UI.busy ? "disabled" : "";
+    const dis = !aiReady() || UI.busy ? "disabled" : "";
     return `
       <h2>Tema &amp; tinjauan</h2>${keyWarning()}${picker}${lastMessage()}
       <div class="stats">${[["usulan", "proposed"], ["sah", "validated"], ["direvisi", "revised"], ["ditolak", "rejected"]]
@@ -1200,26 +1307,39 @@ const ACTIONS = {
   },
 
   async "save-key"() {
-    const input = $("#key");
-    const key = input.value.trim();
-    input.value = "";
-    if (!KEY_PATTERN.test(key)) return report("err", "Kunci tidak dikenali. Salin ulang kunci dari halaman Anthropic secara utuh, tanpa spasi atau tanda kutip.");
-    SETTINGS.apiKey = key;
+    const id = providerId();
+    const keyInput = $("#key");
+    const key = keyInput ? keyInput.value.trim() : "";
+    if (keyInput) keyInput.value = "";
+    const model = ($("#model")?.value || "").trim();
+    const url = ($("#base-url")?.value || "").trim();
+    if (key && (!KEY_PATTERN.test(key) || !NO_QUOTES.test(key))) {
+      return report("err", "Kunci tidak dikenali. Salin ulang kunci dari halaman penyedia secara utuh, tanpa spasi atau tanda kutip.");
+    }
+    if (model && !/^[\w.:/@-]+$/.test(model)) return report("err", "Nama model hanya boleh berisi huruf, angka, titik, titik dua, garis miring, @, dan tanda hubung.");
+    if (url && !/^https?:\/\/[^\s"'`]+$/.test(url)) return report("err", "Alamat layanan harus diawali http:// atau https://.");
+    SETTINGS.providers = SETTINGS.providers || {};
+    const conf = SETTINGS.providers[id] || {};
+    if (key) conf.key = key;
+    if (model) conf.model = model; else delete conf.model;
+    if (url) conf.url = url; else delete conf.url;
+    SETTINGS.providers[id] = conf;
     await saveSettings();
-    report("ok", "Kunci tersimpan.");
+    report(aiReady() ? "ok" : "warn", aiReady() ? `Pengaturan ${provider().label} tersimpan.` : `Pengaturan tersimpan, tetapi belum lengkap untuk ${provider().label}.`);
   },
   async "delete-key"() {
-    delete SETTINGS.apiKey;
+    const conf = SETTINGS.providers && SETTINGS.providers[providerId()];
+    if (conf) delete conf.key;
     await saveSettings();
-    report("ok", "Kunci dihapus dari peramban ini.");
+    report("ok", `Kunci ${provider().label} dihapus dari peramban ini.`);
   },
   "test-key"() {
     return guarded(async () => {
       const prompt = "Balas hanya dengan satu kata: siap.";
-      const response = await callClaude(prompt, { stage: "key_check", maxTokens: 32 });
+      const response = await callModel(prompt, { stage: "key_check", maxTokens: 32 });
       logCall(null, "key_check", prompt, response);
       await saveState();
-      UI.last = { kind: "ok", text: "Kunci berfungsi. Aplikasi siap memanggil AI." };
+      UI.last = { kind: "ok", text: `Kunci berfungsi. Aplikasi siap memanggil ${aiLabel()}.` };
     });
   },
 
@@ -1291,7 +1411,7 @@ const ACTIONS = {
 
   async backup() {
     const stamp = nowIso().slice(0, 10).replace(/-/g, "");
-    download(`cadangan-agen-kualitatif-${stamp}.json`, backupJson(), "application/json");
+    download(`cadangan-qualitative-analysis-form-${stamp}.json`, backupJson(), "application/json");
     SETTINGS.lastBackupAt = nowIso();
     await saveSettings();
     report("ok", "Cadangan diunduh. Simpan berkasnya di tempat aman.");
@@ -1333,6 +1453,10 @@ document.addEventListener("click", (ev) => {
 });
 document.addEventListener("change", (ev) => {
   if (ev.target.dataset.action === "pick-run") { UI.runId = Number(ev.target.value); UI.last = null; render(); }
+  if (ev.target.dataset.action === "pick-provider" && PROVIDERS[ev.target.value]) {
+    SETTINGS.provider = ev.target.value; UI.last = null;
+    saveSettings().then(render);
+  }
   if (ev.target.id === "file" && ev.target.files[0] && !$("#doc-title").value) {
     $("#doc-title").value = ev.target.files[0].name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
   }
@@ -1345,6 +1469,13 @@ async function start() {
     db = await idbOpen();
     S = (await idbGet("state")) || emptyState();
     SETTINGS = (await idbGet("settings")) || {};
+    // Migrasi dari versi yang hanya mengenal Anthropic.
+    if (SETTINGS.apiKey) {
+      SETTINGS.providers = SETTINGS.providers || {};
+      SETTINGS.providers.anthropic = { ...(SETTINGS.providers.anthropic || {}), key: SETTINGS.apiKey };
+      delete SETTINGS.apiKey;
+      await saveSettings();
+    }
     for (const t of TABLES) { S[t] = S[t] || []; S.seq[t] = S.seq[t] || 0; }
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     render();

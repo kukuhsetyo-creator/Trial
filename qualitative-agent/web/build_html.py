@@ -1,8 +1,8 @@
-"""Membangun AgenKualitatif.html: satu berkas yang berjalan langsung di peramban.
+"""Membangun QualitativeAnalysisForm.html: satu berkas yang berjalan langsung di peramban.
 
 Menyematkan src/app.js dan pustaka di vendor/ ke dalam src/app.html, sehingga
 hasilnya dapat dibuka dengan klik dua kali tanpa internet untuk memuat pustaka
-(internet tetap diperlukan untuk memanggil AI Anthropic).
+(internet tetap diperlukan untuk memanggil penyedia AI daring).
 
 pdf.js dimuat bersama pdf.worker sebagai skrip biasa; pdf.js lalu memakai
 "fake worker" di utas utama, yang berfungsi pula ketika halaman dibuka dari
@@ -37,7 +37,7 @@ def font_faces() -> str:
         f'font-display: swap; src: url("{data_uri(ASSETS / "fonts" / berkas, "font/woff2")}") format("woff2"); }}'
         for keluarga, tebal, berkas in FONTS
     )
-OUT = WEB / "AgenKualitatif.html"
+OUT = WEB / "QualitativeAnalysisForm.html"
 
 
 def aman_disematkan(kode: str, nama: str) -> str:

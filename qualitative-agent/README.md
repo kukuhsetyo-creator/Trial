@@ -83,9 +83,12 @@ dan permintaan metrik reliabilitas antarpenilai ditolak dengan pengecualian eksp
 
 ## Edisi peramban (HTML)
 
-`web/AgenKualitatif.html` adalah satu berkas yang berjalan langsung di peramban tanpa
-Python, peluncur, maupun pemasangan: klik dua kali, lalu isi kunci akses di halaman
-Pengaturan. Ia berdampingan dengan versi Python, mencakup alur RTA yang sama, dan
+`web/QualitativeAnalysisForm.html` (Qualitative Analysis Form, CSPS) adalah satu berkas yang
+berjalan langsung di peramban tanpa Python, peluncur, maupun pemasangan: klik dua kali, lalu
+pilih penyedia AI dan isi kuncinya di halaman Pengaturan. Penyedia yang didukung: Claude
+(Anthropic), Gemini (Google), Qwen (Alibaba Cloud), DeepSeek, GPT (OpenAI), OpenRouter,
+layanan lain yang kompatibel OpenAI, dan Ollama untuk model lokal. Akses langsung dari
+`file://` sudah diuji untuk Anthropic, Gemini, dan Ollama; penyedia lain belum. Ia berdampingan dengan versi Python, mencakup alur RTA yang sama, dan
 menegakkan aturan `CLAUDE.md` yang sama (status hanya berubah lewat peninjauan, setiap
 pemanggilan AI tercatat, tanpa hitungan frekuensi di prompt tema, penamaan tema menuntut
 memo peneliti). Data tersimpan di IndexedDB peramban; kunci akses tidak pernah ikut
