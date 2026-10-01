@@ -43,6 +43,12 @@ def main(argv: list[str] | None = None, t0: float | None = None) -> int:
 
     app = QApplication.instance() or QApplication(sys.argv[:1])
     app.setApplicationName(S.APP_TITLE)
+    from PySide6.QtGui import QIcon
+
+    from ..resources import ICON_PATH
+
+    if ICON_PATH.exists():
+        app.setWindowIcon(QIcon(str(ICON_PATH)))
     families = set(QFontDatabase.families())
     for name in ("Segoe UI", "DejaVu Sans"):
         if name in families:

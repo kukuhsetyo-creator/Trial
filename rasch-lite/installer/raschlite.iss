@@ -38,6 +38,7 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName={#MyAppName} {#MyAppVersion}
 UninstallDisplayIcon={app}\{#MyAppExeName}
+SetupIconFile=..\src\raschlite\resources\brand\raschlite.ico
 CloseApplications=yes
 
 [Languages]

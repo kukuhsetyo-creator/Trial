@@ -26,6 +26,7 @@ WINDOWS = sys.platform.startswith("win")
 
 datas = [
     (str(PKG / "resources" / "sample_data"), "raschlite/resources/sample_data"),
+    (str(PKG / "resources" / "brand"), "raschlite/resources/brand"),
     (str(PKG / "report" / "templates"), "raschlite/report/templates"),
 ]
 
@@ -92,7 +93,7 @@ exe = EXE(
     upx=False,
     console=False,
     disable_windowed_traceback=False,
-    icon=None,
+    icon=str(PKG / "resources" / "brand" / "raschlite.ico"),
 )
 
 coll = COLLECT(
