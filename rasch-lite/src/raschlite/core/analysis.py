@@ -66,8 +66,8 @@ def run_analysis(
     else:
         issues.append(DataIssue("warning", "not_converged",
                                 msg.NOT_CONVERGED.format(n=jm.n_iter, change=jm.max_change, resid=jm.max_residual)))
-    if model != "dichotomous":
-        issues.append(DataIssue("info", "no_bias_correction_poly", msg.NO_BIAS_CORRECTION_POLY))
+    issues.append(DataIssue("info", "bias_correction",
+                            msg.BIAS_CORRECTION.format(factor=jm.bias_factor, L=int((coded.item_extreme == 0).sum()))))
 
     lo, hi = rules.mnsq_range(strict_fit)
     names = coded.item_names
@@ -91,10 +91,10 @@ def run_analysis(
 
     categories = None
     if model != "dichotomous":
-        categories = category_table(model, X0, obs, theta_e, jm.b[ei], mom.E, mom.W, jm.tau[ei],
-                                    jm.tau_se[ei], jm.delta[ei], coded.m[ei],
-                                    [lab for lab, keep in zip(coded.category_labels, ei) if keep],
-                                    names_e, rules.CATEGORY_MIN_COUNT)
+        categories = category_table(model, X0, obs, theta_e, jm.b[ei], mom.P, mom.E, mom.W,
+                                    jm.threshold[ei], jm.threshold_se[ei], jm.threshold_location[ei],
+                                    coded.m[ei], [lab for lab, keep in zip(coded.category_labels, ei) if keep],
+                                    names_e, rules.CATEGORY_MIN_COUNT, rules.CATEGORY_OUTFIT_MAX)
 
     summary = _summary(prep, coded, jm, items, persons, ep, ei)
     dimensionality = residual_pca(X0, obs, mom.E, mom.W, names_e)
@@ -104,7 +104,8 @@ def run_analysis(
     if run_dif and coded.groups is not None:
         tau_e = jm.tau[ei]
         dif, too_small = dif_analysis(Xe, theta_e, tau_e, coded.m[ei], coded.groups[ep], names_e,
-                                      jm.bias_factor, rules.DIF_CONTRAST_MIN, rules.DIF_P_MAX)
+                                      jm.bias_factor, rules.DIF_CONTRAST_MIN, rules.DIF_P_MAX,
+                                      rules.DIF_ETS_B, rules.DIF_ETS_C)
         for g in too_small:
             issues.append(DataIssue("warning", "dif_too_few", msg.DIF_TOO_FEW.format(group=g)))
         if dif.empty:
@@ -122,6 +123,7 @@ def run_analysis(
         "dif_contrast_min": rules.DIF_CONTRAST_MIN,
         "dif_p_max": rules.DIF_P_MAX,
         "category_min_count": rules.CATEGORY_MIN_COUNT,
+        "category_outfit_max": rules.CATEGORY_OUTFIT_MAX,
     }
     return RaschResults(
         model=model, coded=coded, jmle=jm, items=items, persons=persons, categories=categories,

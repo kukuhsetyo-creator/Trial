@@ -164,8 +164,30 @@ def test_bias_correction_factor(analyze):
     res = analyze(simulate_dichotomous(theta, b, rng), "dichotomous", run_dif=False)
     assert np.allclose(res.items["measure"], res.jmle.b * 11 / 12)
     X = simulate_responses(theta, rsm_delta(b, [-0.5, 0.5]), rng)
+    for model in ("rsm", "pcm"):
+        res = analyze(X, model, run_dif=False)
+        assert np.isclose(res.jmle.bias_factor, 11 / 12)
+        assert np.allclose(res.items["measure"], res.jmle.b * 11 / 12)
+        cat = res.categories.dropna(subset=["threshold"])
+        tau = res.jmle.tau[:, :2]
+        expected = tau[0] * 11 / 12 if model == "rsm" else tau.ravel() * 11 / 12
+        assert np.allclose(cat["threshold"].to_numpy(), expected)
+
+
+def test_category_outfit_expected_matches_observed_under_model(analyze):
+    """Data cocok model tetapi meleset target: outfit kategori ujung jauh di atas 2,
+    mengikuti nilai harapannya, sehingga tidak ditandai."""
+    rng = np.random.default_rng(16)
+    theta = rng.normal(2.5, 1.0, 1500)
+    b = rng.uniform(-1, 1, 15)
+    X = simulate_responses(theta, rsm_delta(b, [-1.5, -0.5, 0.5, 1.5]), rng)
     res = analyze(X, "rsm", run_dif=False)
-    assert np.allclose(res.items["measure"], res.jmle.b)
+    cat = res.categories
+    assert cat["outfit_mnsq"].max() > 2.0
+    rel = (cat["outfit_mnsq"] / cat["outfit_expected"]).to_numpy()
+    assert np.all(np.abs(rel - 1.0) < 0.2)
+    assert np.all(np.abs(cat["outfit_z"]) < 3.0)
+    assert not cat["flag_outfit_high"].any()
 
 
 def test_extreme_persons_receive_0_3_adjusted_measures(analyze):

@@ -9,6 +9,9 @@ t Welch dan derajat bebas Welch-Satterthwaite:
     t  = kontras / sqrt(SE_A^2 + SE_B^2)
     df = (SE_A^2 + SE_B^2)^2 / (SE_A^4 / (n_A - 1) + SE_B^4 / (n_B - 1))
 
+Kolom ``ets_category`` memuat klasifikasi ETS A/B/C (Zwick, Thayer & Lewis,
+1999) seperti yang dilaporkan Winsteps.
+
 Skor grup yang ekstrem (0 atau maksimum) diberi estimasi dengan penyesuaian
 0,3 poin dan ditandai.
 """
@@ -23,7 +26,8 @@ from .jmle import EXTREME_SCORE_ADJUSTMENT, solve_item_locations
 
 
 def dif_analysis(X: np.ndarray, theta: np.ndarray, tau: np.ndarray, m: np.ndarray, groups: np.ndarray,
-                 names: list[str], scale: float, contrast_min: float, p_max: float) -> tuple[pd.DataFrame, list[str]]:
+                 names: list[str], scale: float, contrast_min: float, p_max: float,
+                 ets_b: float, ets_c: float) -> tuple[pd.DataFrame, list[str]]:
     """Hitung tabel DIF.
 
     ``X``, ``theta``, ``groups`` hanya berisi person non-ekstrem; ``tau`` (L, M)
@@ -67,6 +71,12 @@ def dif_analysis(X: np.ndarray, theta: np.ndarray, tau: np.ndarray, m: np.ndarra
         df = joint ** 4 / (A["se"] ** 4 / (A["n"] - 1) + B["se"] ** 4 / (B["n"] - 1))
     p = 2.0 * stats.t.sf(np.abs(t), df)
     flag = (np.abs(contrast) >= contrast_min) & (p < p_max)
+    # Kategori ETS (Zwick, Thayer & Lewis, 1999; manual Winsteps):
+    # C: |DIF| >= ets_c dan p(|DIF| <= ets_b) < .05 (uji satu sisi);
+    # B: |DIF| >= ets_b dan p(|DIF| = 0) < .05; selain itu A.
+    p_beyond_b = stats.t.sf((np.abs(contrast) - ets_b) / joint, df)
+    ets = np.where((np.abs(contrast) >= ets_c) & (p_beyond_b < 0.05), "C",
+                   np.where((np.abs(contrast) >= ets_b) & (p < 0.05), "B", "A"))
     table = pd.DataFrame({
         "item": names,
         "group_a": ga,
@@ -85,5 +95,6 @@ def dif_analysis(X: np.ndarray, theta: np.ndarray, tau: np.ndarray, m: np.ndarra
         "extreme_a": A["extreme"],
         "extreme_b": B["extreme"],
         "flag_dif": flag,
+        "ets_category": ets,
     })
     return table, notes

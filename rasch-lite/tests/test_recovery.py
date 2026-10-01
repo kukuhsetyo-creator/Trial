@@ -69,9 +69,9 @@ def test_rsm_recovery(seed, analyze, record):
     tau = np.array([-1.3, 0.2, 1.1])  # 4 kategori
     res = analyze(simulate_responses(theta, rsm_delta(b, tau), rng), "rsm", run_dif=False)
     assert res.converged
-    tau_est = res.jmle.tau[0, :3]
+    tau_est = res.jmle.threshold[0, :3]
     delta_true = rsm_delta(b - b.mean(), tau)
-    delta_est = res.jmle.delta[:, :3]
+    delta_est = res.jmle.threshold_location[:, :3]
     r_tau = _r(tau_est, tau)
     record(test="RSM N=1000 L=20 4 kat", seed=seed, r_tau=r_tau, rmse_tau=_rmse(tau_est, tau),
            r_delta=_r(delta_est.ravel(), delta_true.ravel()),
@@ -92,10 +92,11 @@ def test_pcm_recovery(seed, analyze, record):
     res = analyze(simulate_responses(theta, delta, rng), "pcm", run_dif=False)
     assert res.converged
     delta_true = delta - b.mean()
-    delta_est = res.jmle.delta[:, :3]
+    delta_est = res.jmle.threshold_location[:, :3]
     r_delta = _r(delta_est.ravel(), delta_true.ravel())
     record(test="PCM N=1000 L=20 4 kat", seed=seed, r_delta=r_delta,
            rmse_delta=_rmse(delta_est.ravel(), delta_true.ravel()),
-           r_tau_relatif=_r(res.jmle.tau[:, :3].ravel(), tau.ravel()),
+           r_tau_relatif=_r(res.jmle.threshold[:, :3].ravel(), tau.ravel()),
+           rmse_tau_relatif=_rmse(res.jmle.threshold[:, :3].ravel(), tau.ravel()),
            r_b=_r(res.items["measure"], b - b.mean()), iterasi=res.summary["iterations"])
     assert r_delta >= 0.95

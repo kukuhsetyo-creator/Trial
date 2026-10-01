@@ -34,10 +34,12 @@ def residual_pca(X0: np.ndarray, obs: np.ndarray, E: np.ndarray, W: np.ndarray,
         v1 = -v1
     loadings = v1 * np.sqrt(max(vals[0], 0.0))
 
-    # Varians mentah yang dijelaskan measure.
-    # TODO: verifikasi rumus - mengikuti uraian Linacre (2006, RMT 20:1) dan
-    # tabel 23.0 Winsteps: explained = sum (E - rerata X)^2,
-    # unexplained = sum (X - E)^2, total = explained + unexplained.
+    # Varians mentah yang dijelaskan measure (Linacre, 2006, RMT 20:1, 1045;
+    # tabel 23.0 Winsteps): explained = sum (E - rerata X)^2, unexplained =
+    # sum (X - E)^2 dengan residual mentah, total = explained + unexplained,
+    # person/item ekstrem tidak diikutkan. Pada solusi JMLE jumlah residual
+    # bernilai nol sehingga rerata X = rerata E, dan pilihan rerata tidak
+    # memengaruhi hasil. Satuan eigenvalue: unexplained = jumlah item.
     x_mean = X0[obs].mean()
     explained = float(((E - x_mean) ** 2)[obs].sum())
     unexplained = float(((X0 - E) ** 2)[obs].sum())

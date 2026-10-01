@@ -97,9 +97,9 @@ NOT_CONVERGED = (
 )
 CONVERGED = "Estimasi konvergen setelah {n} iterasi."
 CANCELLED = "Estimasi dibatalkan oleh pengguna."
-NO_BIAS_CORRECTION_POLY = (
-    "Koreksi bias JMLE (L-1)/L hanya diterapkan pada model dikotomus; pada RSM/PCM "
-    "measure item dilaporkan tanpa koreksi."
+BIAS_CORRECTION = (
+    "Measure item dan threshold dikoreksi bias JMLE dengan faktor (L-1)/L = {factor:.4f} "
+    "(L = {L} item). Statistik fit dihitung dari estimasi sebelum koreksi."
 )
 DIF_TOO_FEW = "Grup '{group}' memiliki kurang dari dua responden non-ekstrem sehingga DIF tidak dihitung."
 ALPHA_FEW_COMPLETE = (

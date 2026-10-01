@@ -79,6 +79,7 @@ def test_dif_detected(seed, analyze, record):
     assert {"I03", "I11"} <= set(flagged)
     assert set(flagged) == {"I03", "I11"}, "item tanpa DIF ikut ditandai"
     assert rows.loc["I03", "contrast"] < 0 and rows.loc["I11", "contrast"] < 0
+    assert set(rows.loc[["I03", "I11"], "ets_category"]) <= {"B", "C"}
 
 
 @pytest.mark.parametrize("seed", SEEDS)

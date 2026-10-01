@@ -18,9 +18,7 @@ def separation_statistics(measures: np.ndarray, se: np.ndarray, infit: np.ndarra
     x = measures[ok]
     s = se[ok]
     out = {"n": int(ok.sum()), "mean": float(np.mean(x)) if x.size else np.nan}
-    # TODO: verifikasi rumus - Winsteps memakai SD populasi (pembagi N) atau
-    # sampel (N-1) untuk varians teramati dalam reliabilitas; di sini dipakai
-    # SD populasi.
+    # SD populasi (pembagi N), sesuai manual Winsteps: G = TRUE P.SD / RMSE.
     sd = float(np.std(x)) if x.size else np.nan
     out["sd"] = sd
     variants = {"model": s}
