@@ -35,9 +35,10 @@ from ..core.data import DataValidationError, PreparedData, category_issues, prep
 from ..interpret import rules
 from ..interpret.glossary import GLOSSARY, tooltip
 from ..interpret.narrative import num, pct
+from ..report.common import DECIMALS, dif_labels, table_frame
 from ..resources import SAMPLES, sample_path
 from . import strings as S
-from .widgets import Banner, ChartPanel, Collapsible, DataFrameModel, TrafficLight, make_table, tech_table
+from .widgets import Banner, ChartPanel, Collapsible, TrafficLight, make_table, tech_table
 from .worker import AnalysisWorker, start_worker
 
 
@@ -431,22 +432,15 @@ class RunPage(QWidget):
 # ---------------------------------------------------------------------------
 # Langkah 4: Hasil
 # ---------------------------------------------------------------------------
-ITEM_COLS = ["item", "status", "n_categories", "score", "count", "measure", "se", "infit_mnsq", "infit_zstd",
-             "outfit_mnsq", "outfit_zstd", "ptmea_obs", "ptmea_exp", "flag_misfit", "flag_negative_ptmea"]
-PERSON_COLS = ["person", "group", "status", "score", "max_score", "count", "measure", "se", "infit_mnsq",
-               "infit_zstd", "outfit_mnsq", "outfit_zstd", "flag_misfit"]
-CATEGORY_COLS = ["item", "label", "count", "percent", "avg_measure", "outfit_mnsq", "outfit_expected", "outfit_z",
-                 "threshold", "threshold_se", "threshold_location", "flag_low_count", "flag_disordered_threshold",
-                 "flag_disordered_avg", "flag_outfit_high"]
-CATEGORY_FLAGS = ["flag_low_count", "flag_disordered_threshold", "flag_disordered_avg", "flag_outfit_high"]
-DIF_COLS = ["item", "measure_a", "se_a", "n_a", "measure_b", "se_b", "n_b", "contrast", "joint_se", "t", "df", "p",
-            "ets_category", "flag_dif"]
-
-
 class ResultsPage(QWidget):
-    def __init__(self, res, interp, parent=None):
+    def __init__(self, res, interp, source_name: str = "", parent=None):
         super().__init__(parent)
-        self.res, self.interp = res, interp
+        self.res, self.interp, self.source_name = res, interp, source_name
+        self.export_running = False
+        self.export_outcome = None  # "finished" | "failed" | "cancelled"
+        self.export_written = None
+        self._export_worker = None
+        self._export_thread = None
         s = res.summary
         conv = (S.CONVERGED_OK if res.converged else S.CONVERGED_NO).format(n=s["iterations"])
         header = QLabel(S.RESULT_HEADER.format(model=interp.model_name, n=s["n_persons"], k=s["n_items"], conv=conv))
@@ -464,10 +458,72 @@ class ResultsPage(QWidget):
         self.charts = ChartPanel(res)
         self.chart_panels[self.tabs.addTab(self.charts, S.TAB_CHARTS)] = self.charts
         self.tabs.addTab(self._glossary_tab(), S.TAB_GLOSSARY)
+        self.btn_export = QPushButton(S.BTN_EXPORT)
+        self.export_progress = QProgressBar()
+        self.export_progress.hide()
+        self.export_banner = Banner()
+        top = QHBoxLayout()
+        top.addWidget(header, 1)
+        top.addWidget(self.btn_export)
         lay = QVBoxLayout(self)
-        lay.addWidget(header)
+        lay.addLayout(top)
+        lay.addWidget(self.export_progress)
+        lay.addWidget(self.export_banner)
         lay.addWidget(self.tabs, 1)
         self.tabs.currentChanged.connect(self._render_visible_chart)
+        self.btn_export.clicked.connect(self._ask_export)
+
+    # --- Ekspor -------------------------------------------------------------
+    def _ask_export(self) -> None:
+        folder = QFileDialog.getExistingDirectory(self, S.EXPORT_DIALOG)
+        if folder:
+            self.start_export(folder)
+
+    def start_export(self, folder) -> None:
+        from .worker import ExportWorker
+
+        self.export_running = True
+        self.export_outcome = None
+        self.btn_export.setEnabled(False)
+        self.export_progress.setValue(0)
+        self.export_progress.show()
+        self.export_banner.clear_message()
+        self._export_folder = folder
+        worker = ExportWorker(self.res, self.interp, folder, self.source_name)
+        worker.progress.connect(self._on_export_progress)
+        worker.finished.connect(self._on_export_finished)
+        worker.failed.connect(self._on_export_failed)
+        worker.cancelled.connect(self._on_export_failed)
+        self._export_worker = worker
+        self._export_thread = start_worker(worker, self)
+
+    def wait_export(self, ms: int = 120000) -> None:
+        if self._export_thread is not None:
+            self._export_thread.wait(ms)
+
+    def _on_export_progress(self, k: int, n: int, message: str) -> None:
+        self.export_progress.setMaximum(max(n, 1))
+        self.export_progress.setValue(k)
+        if message:
+            self.export_progress.setFormat(S.EXPORT_RUNNING.format(message=message))
+
+    def _end_export(self, outcome: str) -> None:
+        self.export_running = False
+        self.export_outcome = outcome
+        self.btn_export.setEnabled(True)
+        self.export_progress.hide()
+
+    def _on_export_finished(self, written) -> None:
+        self.export_written = written
+        files = ", ".join(S.EXPORT_FILES[k] for k in ("excel", "html", "pdf") if k in written)
+        files += f", {S.EXPORT_FILES['charts']}/ ({len(written['charts'])} berkas)"
+        self.export_banner.show_message(html.escape(S.EXPORT_DONE.format(folder=self._export_folder, files=files)),
+                                        "info")
+        self._end_export("finished")
+
+    def _on_export_failed(self, message: str = "") -> None:
+        self.export_banner.show_message(html.escape(S.EXPORT_FAILED.format(error=message or "-")), "error")
+        self._end_export("failed" if message else "cancelled")
 
     def _render_visible_chart(self, index: int) -> None:
         panel = self.chart_panels.get(index)
@@ -542,36 +598,32 @@ class ResultsPage(QWidget):
         v.addWidget(view, 1)
         return w
 
+    def _table_view(self, key: str):
+        df, cols, flag, muted = table_frame(self.res, key)
+        labels = dif_labels(self.res) if key == "dif" else {}
+        if labels:
+            df = df.rename(columns=labels)
+            cols = [labels.get(c, c) for c in cols]
+        dec = {labels.get(k, k): v for k, v in DECIMALS.items()}
+        return make_table(df, cols, flag, muted, dec)
+
     def _items_tab(self) -> QWidget:
-        items = self.res.items
-        cols = [c for c in ITEM_COLS if c != "n_categories" or self.res.model != "dichotomous"]
-        flag = (items["flag_misfit"] | items["flag_negative_ptmea"]).to_numpy()
-        view = make_table(items, cols, flag, items["extreme"].to_numpy(), {"score": 0})
-        return self._with_hint(view, "items")
+        return self._with_hint(self._table_view("items"), "items")
 
     def _persons_tab(self) -> QWidget:
-        p = self.res.persons
-        cols = [c for c in PERSON_COLS if c in p.columns]
-        muted = (p["extreme"] | p["measure"].isna()).to_numpy()
-        view = make_table(p, cols, p["flag_misfit"].to_numpy(), muted, {"score": 0, "max_score": 0})
-        return self._with_hint(view, "persons")
+        return self._with_hint(self._table_view("persons"), "persons")
 
     def _categories_tab(self) -> QWidget:
-        cat = self.res.categories
-        if cat is None:
+        if self.res.categories is None:
             return _para(S.NOT_APPLICABLE_CATEGORIES)
-        flag = cat[CATEGORY_FLAGS].any(axis=1).to_numpy()
-        view = make_table(cat, CATEGORY_COLS, flag, None, {"percent": 1})
-        return self._with_hint(view, "categories")
+        return self._with_hint(self._table_view("categories"), "categories")
 
     def _dimension_tab(self) -> QWidget:
         d = self.res.dimensionality
         text = _para(S.DIMENSION_TEXT.format(eig=num(d["first_contrast_eigenvalue"]),
                                              lim=num(rules.CONTRAST_EIGENVALUE_MAX, 1),
                                              pct=pct(d["variance_explained_pct"], 1)))
-        load = d["loadings"].rename("loading").reset_index().rename(columns={"index": "item"})
-        load = load.merge(self.res.items[["item", "measure"]], on="item").sort_values("loading", ascending=False)
-        view = make_table(load, ["item", "measure", "loading"])
+        view = self._table_view("loadings")
         self.tables["loadings"] = view
         w = QWidget()
         v = QVBoxLayout(w)
@@ -585,10 +637,8 @@ class ResultsPage(QWidget):
         v = QVBoxLayout(w)
         v.addWidget(_para(S.LOCAL_TEXT.format(mean=num(q3["mean"], 3), cutoff=num(q3["cutoff"], 3),
                                               rel=num(rules.Q3_RELATIVE_CUTOFF, 1))))
-        pairs = q3["flagged_pairs"]
-        if len(pairs):
-            view = make_table(pairs, ["item_a", "item_b", "q3", "q3_relative"], np.ones(len(pairs), bool), None,
-                              {"q3": 3, "q3_relative": 3})
+        if len(q3["flagged_pairs"]):
+            view = self._table_view("q3_pairs")
             self.tables["q3_pairs"] = view
             v.addWidget(view, 1)
         else:
@@ -596,16 +646,9 @@ class ResultsPage(QWidget):
         return w
 
     def _dif_tab(self) -> QWidget:
-        dif = self.res.dif
-        if dif is None:
+        if self.res.dif is None:
             return _para(S.NOT_APPLICABLE_DIF)
-        ga, gb = dif["group_a"].iloc[0], dif["group_b"].iloc[0]
-        rename = {"measure_a": f"Measure {ga}", "se_a": f"SE {ga}", "n_a": f"n {ga}",
-                  "measure_b": f"Measure {gb}", "se_b": f"SE {gb}", "n_b": f"n {gb}"}
-        df = dif.rename(columns=rename)
-        cols = [rename.get(c, c) for c in DIF_COLS]
-        view = make_table(df, cols, dif["flag_dif"].to_numpy(), None, {"p": 4, f"n {ga}": 0, f"n {gb}": 0, "df": 0})
-        return self._with_hint(view, "dif")
+        return self._with_hint(self._table_view("dif"), "dif")
 
     def _glossary_tab(self) -> QWidget:
         browser = QTextBrowser()
@@ -620,4 +663,4 @@ def _dot(status: str) -> str:
     return STATUS_COLORS[status]
 
 
-__all__ = ["ImportPage", "ModelPage", "RunPage", "ResultsPage", "DataFrameModel"]
+__all__ = ["ImportPage", "ModelPage", "RunPage", "ResultsPage"]

@@ -3,13 +3,14 @@
 Prosedur (setara Tabel 30 Winsteps): measure person dan struktur threshold
 dikunci pada hasil estimasi gabungan; lokasi setiap item diestimasi ulang
 secara terpisah dalam tiap grup. Kontras DIF = measure grup A - measure grup B
-(positif berarti item lebih sulit bagi grup A). Signifikansi diuji dengan
-t Welch dan derajat bebas Welch-Satterthwaite:
+(positif berarti item lebih sulit bagi grup A). Statistik t mengikuti Draba
+(1977); derajat bebas Welch-Satterthwaite dipakai untuk nilai p yang dilaporkan:
 
     t  = kontras / sqrt(SE_A^2 + SE_B^2)
     df = (SE_A^2 + SE_B^2)^2 / (SE_A^4 / (n_A - 1) + SE_B^4 / (n_B - 1))
 
-Kolom ``ets_category`` memuat klasifikasi ETS A/B/C (Zwick, Thayer & Lewis,
+Butir ditandai bila |kontras| >= ``contrast_min`` DAN |t| > ``t_min``
+(Draba, 1977). Kolom ``ets_category`` memuat klasifikasi ETS A/B/C (Zwick, Thayer & Lewis,
 1999) seperti yang dilaporkan Winsteps.
 
 Skor grup yang ekstrem (0 atau maksimum) diberi estimasi dengan penyesuaian
@@ -26,7 +27,7 @@ from .jmle import EXTREME_SCORE_ADJUSTMENT, solve_item_locations
 
 
 def dif_analysis(X: np.ndarray, theta: np.ndarray, tau: np.ndarray, m: np.ndarray, groups: np.ndarray,
-                 names: list[str], scale: float, contrast_min: float, p_max: float,
+                 names: list[str], scale: float, contrast_min: float, t_min: float,
                  ets_b: float, ets_c: float) -> tuple[pd.DataFrame, list[str]]:
     """Hitung tabel DIF.
 
@@ -70,7 +71,7 @@ def dif_analysis(X: np.ndarray, theta: np.ndarray, tau: np.ndarray, m: np.ndarra
     with np.errstate(divide="ignore", invalid="ignore"):
         df = joint ** 4 / (A["se"] ** 4 / (A["n"] - 1) + B["se"] ** 4 / (B["n"] - 1))
     p = 2.0 * stats.t.sf(np.abs(t), df)
-    flag = (np.abs(contrast) >= contrast_min) & (p < p_max)
+    flag = (np.abs(contrast) >= contrast_min) & (np.abs(t) > t_min)
     # Kategori ETS (Zwick, Thayer & Lewis, 1999; manual Winsteps):
     # C: |DIF| >= ets_c dan p(|DIF| <= ets_b) < .05 (uji satu sisi);
     # B: |DIF| >= ets_b dan p(|DIF| = 0) < .05; selain itu A.

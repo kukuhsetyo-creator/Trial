@@ -71,3 +71,36 @@ def start_worker(worker: AnalysisWorker, parent: QObject) -> QThread:
     thread.finished.connect(worker.deleteLater)
     thread.start()
     return thread
+
+
+class ExportWorker(QObject):
+    """Menjalankan :func:`raschlite.report.export_all` di thread terpisah."""
+
+    progress = Signal(int, int, str)
+    finished = Signal(object)
+    failed = Signal(str)
+    cancelled = Signal()
+
+    def __init__(self, res, interp, folder, source_name: str = ""):
+        super().__init__()
+        self.res, self.interp, self.folder, self.source_name = res, interp, folder, source_name
+        self._cancel = False
+
+    def cancel(self) -> None:
+        self._cancel = True
+
+    @Slot()
+    def run(self) -> None:
+        from ..report import ExportCancelled, export_all
+
+        try:
+            written = export_all(self.res, self.interp, self.folder, self.source_name,
+                                 progress=lambda k, n, msg: self.progress.emit(k, n, msg),
+                                 should_cancel=lambda: self._cancel)
+        except ExportCancelled:
+            self.cancelled.emit()
+            return
+        except Exception as exc:
+            self.failed.emit(f"{type(exc).__name__}: {exc}")
+            return
+        self.finished.emit(written)

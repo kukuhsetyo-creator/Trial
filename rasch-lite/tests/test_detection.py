@@ -74,8 +74,9 @@ def test_dif_detected(seed, analyze, record):
     flagged = dif.loc[dif["flag_dif"], "item"].tolist()
     rows = dif.set_index("item")
     record(test="DIF 2 item +1 logit grup B", seed=seed, ditandai=str(flagged),
-           kontras_I03=float(rows.loc["I03", "contrast"]), p_I03=float(rows.loc["I03", "p"]),
-           kontras_I11=float(rows.loc["I11", "contrast"]), p_I11=float(rows.loc["I11", "p"]))
+           kontras_I03=float(rows.loc["I03", "contrast"]), t_I03=float(rows.loc["I03", "t"]),
+           kontras_I11=float(rows.loc["I11", "contrast"]), t_I11=float(rows.loc["I11", "t"]),
+           ambang_t=res.settings["dif_t_min"])
     assert {"I03", "I11"} <= set(flagged)
     assert set(flagged) == {"I03", "I11"}, "item tanpa DIF ikut ditandai"
     assert rows.loc["I03", "contrast"] < 0 and rows.loc["I11", "contrast"] < 0

@@ -88,11 +88,14 @@ class MainWindow(QMainWindow):
         if self.results_page is not None:
             layout.removeWidget(self.results_page)
             self.results_page.deleteLater()
-        self.results_page = ResultsPage(res, interp)
+        self.results_page = ResultsPage(res, interp, self.import_page.source_name)
         layout.addWidget(self.results_page)
         self._show(RESULTS)
 
     def closeEvent(self, event) -> None:
+        if self.results_page is not None and self.results_page.export_running:
+            self.results_page._export_worker.cancel()
+            self.results_page.wait_export(10000)
         if self.run_page.running:
             self.run_page.cancel()
             self.run_page.wait(5000)

@@ -1,7 +1,8 @@
 """Smoke test GUI headless (QT_QPA_PLATFORM=offscreen).
 
 Alur nyata: muat data contoh, validasi, pilih model, jalankan estimasi di QThread,
-buka setiap tab hasil, render setiap grafik, dan ekspor grafik ke PNG dan SVG.
+buka setiap tab hasil, render setiap grafik, ekspor grafik tunggal ke PNG dan SVG,
+lalu "Ekspor Semua" (Excel, HTML, PDF, folder grafik) lewat thread ekspor.
 """
 
 import os
@@ -63,6 +64,14 @@ def _exercise_results(app, page, tmp_path, tag):
         assert charts.read_label.text()
         paths = charts.export(tmp_path / f"{tag}_{charts.current_key()}", ("png", "svg"))
         assert all(p.exists() and p.stat().st_size > 0 for p in paths)
+    folder = tmp_path / f"ekspor_{tag}"
+    page.start_export(str(folder))
+    _wait(app, lambda: not page.export_running, timeout=180.0)
+    assert page.export_outcome == "finished", page.export_banner.text()
+    for key in ("excel", "html", "pdf"):
+        assert page.export_written[key].exists() and page.export_written[key].stat().st_size > 0
+    assert page.export_written["pdf"].read_bytes().startswith(b"%PDF")
+    assert len(page.export_written["charts"]) > 0
 
 
 def test_full_flow_both_sample_datasets_and_all_models(app, tmp_path):

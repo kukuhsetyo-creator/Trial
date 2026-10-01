@@ -148,11 +148,11 @@ Analisis fungsi kategori hanya relevan untuk skala bertingkat (politomus).
 
 DIF terjadi bila dua orang dengan kemampuan yang sama, tetapi dari kelompok berbeda, memiliki peluang berbeda untuk menjawab benar sebuah butir, seperti timbangan yang berat sebelah. Measure setiap responden dikunci, lalu kesulitan setiap butir dihitung ulang terpisah untuk tiap kelompok.
 
-Butir yang ditandai: S12 lebih sulit bagi kelompok P (selisih 0,97 logit, p < 0,001, kategori ETS C).
+Butir yang ditandai: S12 lebih sulit bagi kelompok P (selisih 0,97 logit, t = 4,60, kategori ETS C).
 
 DIF adalah tanda untuk menelaah isi butir, bukan bukti otomatis bahwa butir itu bias. Perbedaan dapat bersumber dari konteks budaya, pilihan kata, atau pengalaman yang lebih akrab bagi satu kelompok, tetapi juga dapat mencerminkan perbedaan pembelajaran yang memang nyata.
 
-Analisis ini melibatkan sekitar 304 responden kelompok L dan 291 responden kelompok P. Pada sampel kecil, DIF yang nyata dapat terlewat; pada sampel sangat besar, perbedaan kecil pun dapat signifikan, sehingga besar selisih (logit) lebih penting daripada nilai p.
+Analisis ini melibatkan sekitar 304 responden kelompok L dan 291 responden kelompok P. Pada sampel kecil, DIF yang nyata dapat terlewat; pada sampel sangat besar, perbedaan kecil pun dapat signifikan, sehingga besar selisih (logit) lebih penting daripada nilai t.
 
 **Saran tindakan:**
 
@@ -164,14 +164,13 @@ Analisis ini melibatkan sekitar 304 responden kelompok L dan 291 responden kelom
 | Statistik | Nilai | Kriteria |
 |---|---|---|
 | Kelompok (A / B) | L / P | kontras = measure A - measure B |
-| Kriteria penanda | kontras mutlak >= 0,5 dan p < 0,05 | uji t Welch |
-| Catatan kriteria | Draba (1977) memakai t > 2,4 untuk tes > 20 butir | RaschLite memakai p < 0,05 (default) |
+| Kriteria penanda | kontras mutlak >= 0,5 dan |t| > 2,0 | Draba (1977): t > 2,0; t > 2,4 bila lebih dari 20 butir |
 | Kategori ETS (A / B / C) | 19 / 0 / 1 | C: DIF mutlak >= 0,64 dan bermakna melampaui 0,43 (p < 0,05) |
 | S12 | 1,16 vs 2,13; kontras -0,97 (SE 0,21), t(553) = -4,60, p < 0,001 |  |
 
 Rujukan:
 
-- Draba, R. E. (1977). The identification and interpretation of item bias (MESA Memorandum No. 25). Chicago: MESA, University of Chicago. (Kriteria asli: pergeseran >= 0,5 logit dan t > 2,4 untuk tes > 20 butir.)
+- Draba, R. E. (1977). The identification and interpretation of item bias (MESA Memorandum No. 25). Chicago: MESA, University of Chicago.
 - Zwick, R., Thayer, D. T., & Lewis, C. (1999). An empirical Bayes approach to Mantel-Haenszel DIF analysis. Journal of Educational Measurement, 36(1), 1-28.
 - Welch, B. L. (1947). The generalization of 'Student's' problem when several different population variances are involved. Biometrika, 34(1/2), 28-35.
 - Linacre, J. M. Winsteps Rasch measurement computer program user's guide. Beaverton, OR: Winsteps.com. (bagian Reliability and separation, Dimensionality, DIF, Table 3.2, STBIAS=, EXTRSCORE=)

@@ -104,7 +104,7 @@ def run_analysis(
     if run_dif and coded.groups is not None:
         tau_e = jm.tau[ei]
         dif, too_small = dif_analysis(Xe, theta_e, tau_e, coded.m[ei], coded.groups[ep], names_e,
-                                      jm.bias_factor, rules.DIF_CONTRAST_MIN, rules.DIF_P_MAX,
+                                      jm.bias_factor, rules.DIF_CONTRAST_MIN, rules.dif_t_min(len(names_e)),
                                       rules.DIF_ETS_B, rules.DIF_ETS_C)
         for g in too_small:
             issues.append(DataIssue("warning", "dif_too_few", msg.DIF_TOO_FEW.format(group=g)))
@@ -121,7 +121,7 @@ def run_analysis(
         "bias_factor": jm.bias_factor,
         "q3_relative_cutoff": rules.Q3_RELATIVE_CUTOFF,
         "dif_contrast_min": rules.DIF_CONTRAST_MIN,
-        "dif_p_max": rules.DIF_P_MAX,
+        "dif_t_min": rules.dif_t_min(int(ei.sum())),
         "category_min_count": rules.CATEGORY_MIN_COUNT,
         "category_outfit_max": rules.CATEGORY_OUTFIT_MAX,
     }

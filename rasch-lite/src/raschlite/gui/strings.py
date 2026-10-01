@@ -197,3 +197,75 @@ LIGHT_GLOSSARY = {
 }
 
 YES = "Ya"
+
+# --- Ekspor dan laporan ---------------------------------------------------------
+BTN_EXPORT = "Ekspor Semua (Excel, HTML, PDF, grafik)…"
+EXPORT_DIALOG = "Pilih folder tujuan ekspor"
+EXPORT_RUNNING = "Mengekspor: {message}"
+EXPORT_DONE = "Ekspor selesai ke folder {folder}: {files}."
+EXPORT_FAILED = "Ekspor gagal: {error}"
+EXPORT_STEP_CHART = "grafik {k} dari {n} ({name})"
+EXPORT_STEP_EXCEL = "workbook Excel"
+EXPORT_STEP_HTML = "laporan HTML"
+EXPORT_STEP_PDF = "laporan PDF"
+EXPORT_FILES = {
+    "excel": "laporan_raschlite.xlsx",
+    "html": "laporan_raschlite.html",
+    "pdf": "laporan_raschlite.pdf",
+    "charts": "grafik",
+}
+
+REPORT_TITLE = "Laporan Analisis Rasch"
+REPORT_SUBTITLE = "Dihasilkan oleh {app} versi {version} pada {when}"
+REPORT_META = "Informasi analisis"
+REPORT_META_ROWS = {
+    "source": "Berkas data",
+    "model": "Model",
+    "persons": "Responden (dianalisis / ekstrem)",
+    "items": "Butir (dianalisis / ekstrem)",
+    "missing": "Data hilang",
+    "convergence": "Konvergensi",
+    "criteria": "Kriteria konvergensi",
+    "fit_range": "Rentang MNSQ",
+    "bias": "Faktor koreksi bias (L-1)/L",
+    "dif": "Kolom grup DIF",
+}
+REPORT_TABLES = "Tabel"
+REPORT_CHARTS = "Grafik"
+REPORT_GLOSSARY = "Glosarium"
+REPORT_PER_ITEM_ALL = "Grafik per butir ditampilkan untuk semua butir."
+REPORT_PER_ITEM_FLAGGED = (
+    "Grafik per butir ditampilkan untuk butir yang perlu diperiksa saja; grafik semua butir "
+    "tersedia di folder '{folder}'."
+)
+REPORT_PERSONS_MISFIT_ONLY = (
+    "Tabel responden di laporan PDF hanya memuat responden yang misfit; tabel lengkap ada di "
+    "workbook Excel dan laporan HTML."
+)
+REPORT_NO_ROWS = "Tidak ada baris."
+SHEETS = {
+    "summary": "Ringkasan",
+    "items": "Butir",
+    "persons": "Responden",
+    "categories": "Kategori",
+    "dif": "DIF",
+    "loadings": "Kontras PCA",
+    "q3": "Matriks Q3",
+    "q3_pairs": "Pasangan Q3",
+    "notes": "Catatan",
+    "iterations": "Log Iterasi",
+    "settings": "Pengaturan",
+}
+TABLE_TITLES = {
+    "items": "Statistik butir",
+    "persons": "Statistik responden",
+    "categories": "Fungsi kategori",
+    "dif": "Differential Item Functioning",
+    "loadings": "Loading kontras pertama PCA residual",
+    "q3_pairs": "Pasangan butir dengan Q3 tinggi",
+}
+NOTE_LEVELS = {"error": "Galat", "warning": "Peringatan", "info": "Info"}
+ITER_HEAD = ["Iterasi", "Perubahan maks (logit)", "Residual skor maks"]
+LIGHTS_HEAD = ["Aspek", "Status", "Ringkasan"]
+REPORT_TABLE_HINT = "Baris berwarna menandakan nilai yang perlu diperiksa; baris abu-abu menandakan skor ekstrem."
+REPORT_TECHNICAL = "Detail teknis"

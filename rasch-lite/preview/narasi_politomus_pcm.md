@@ -175,20 +175,19 @@ Rujukan:
 
 DIF terjadi bila dua orang dengan kemampuan yang sama, tetapi dari kelompok berbeda, memiliki peluang berbeda untuk menjawab benar sebuah butir, seperti timbangan yang berat sebelah. Measure setiap responden dikunci, lalu kesulitan setiap butir dihitung ulang terpisah untuk tiap kelompok.
 
-Analisis ini melibatkan sekitar 178 responden kelompok L dan 170 responden kelompok P. Pada sampel kecil, DIF yang nyata dapat terlewat; pada sampel sangat besar, perbedaan kecil pun dapat signifikan, sehingga besar selisih (logit) lebih penting daripada nilai p.
+Analisis ini melibatkan sekitar 178 responden kelompok L dan 170 responden kelompok P. Pada sampel kecil, DIF yang nyata dapat terlewat; pada sampel sangat besar, perbedaan kecil pun dapat signifikan, sehingga besar selisih (logit) lebih penting daripada nilai t.
 
 <details><summary>Detail teknis</summary>
 
 | Statistik | Nilai | Kriteria |
 |---|---|---|
 | Kelompok (A / B) | L / P | kontras = measure A - measure B |
-| Kriteria penanda | kontras mutlak >= 0,5 dan p < 0,05 | uji t Welch |
-| Catatan kriteria | Draba (1977) memakai t > 2,4 untuk tes > 20 butir | RaschLite memakai p < 0,05 (default) |
+| Kriteria penanda | kontras mutlak >= 0,5 dan |t| > 2,0 | Draba (1977): t > 2,0; t > 2,4 bila lebih dari 20 butir |
 | Kategori ETS (A / B / C) | 12 / 0 / 0 | C: DIF mutlak >= 0,64 dan bermakna melampaui 0,43 (p < 0,05) |
 
 Rujukan:
 
-- Draba, R. E. (1977). The identification and interpretation of item bias (MESA Memorandum No. 25). Chicago: MESA, University of Chicago. (Kriteria asli: pergeseran >= 0,5 logit dan t > 2,4 untuk tes > 20 butir.)
+- Draba, R. E. (1977). The identification and interpretation of item bias (MESA Memorandum No. 25). Chicago: MESA, University of Chicago.
 - Zwick, R., Thayer, D. T., & Lewis, C. (1999). An empirical Bayes approach to Mantel-Haenszel DIF analysis. Journal of Educational Measurement, 36(1), 1-28.
 - Welch, B. L. (1947). The generalization of 'Student's' problem when several different population variances are involved. Biometrika, 34(1/2), 28-35.
 - Linacre, J. M. Winsteps Rasch measurement computer program user's guide. Beaverton, OR: Winsteps.com. (bagian Reliability and separation, Dimensionality, DIF, Table 3.2, STBIAS=, EXTRSCORE=)

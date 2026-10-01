@@ -610,7 +610,8 @@ def _dif(res) -> tuple[Light, Section]:
     ]
     if len(flagged):
         detail = "; ".join(
-            f"{r.item} lebih sulit bagi kelompok {harder(r)} (selisih {num(abs(r.contrast))} logit, p {_peq(r.p)}, "
+            f"{r.item} lebih sulit bagi kelompok {harder(r)} (selisih {num(abs(r.contrast))} logit, "
+            f"t = {num(abs(r.t))}, "
             f"kategori ETS {r.ets_category})" for r in flagged.head(MAX_LISTED).itertuples())
         paras.append(f"Butir yang ditandai: {detail}.")
         paras.append(
@@ -622,7 +623,7 @@ def _dif(res) -> tuple[Light, Section]:
     paras.append(
         f"Analisis ini melibatkan sekitar {n_a} responden kelompok {ga} dan {n_b} responden kelompok {gb}. "
         "Pada sampel kecil, DIF yang nyata dapat terlewat; pada sampel sangat besar, perbedaan kecil pun "
-        "dapat signifikan, sehingga besar selisih (logit) lebih penting daripada nilai p."
+        "dapat signifikan, sehingga besar selisih (logit) lebih penting daripada nilai t."
     )
     actions = []
     if len(flagged):
@@ -632,10 +633,10 @@ def _dif(res) -> tuple[Light, Section]:
     counts = dif["ets_category"].value_counts()
     tech = [
         TechRow("Kelompok (A / B)", f"{ga} / {gb}", "kontras = measure A - measure B"),
-        TechRow("Kriteria penanda", f"kontras mutlak >= {num(rules.DIF_CONTRAST_MIN, 1)} dan p < {num(rules.DIF_P_MAX)}",
-                "uji t Welch"),
-        TechRow("Catatan kriteria", "Draba (1977) memakai t > 2,4 untuk tes > 20 butir",
-                f"RaschLite memakai p < {num(rules.DIF_P_MAX)} (default)"),
+        TechRow("Kriteria penanda", f"kontras mutlak >= {num(rules.DIF_CONTRAST_MIN, 1)} dan |t| > "
+                                    f"{num(res.settings['dif_t_min'], 1)}",
+                f"Draba (1977): t > {num(rules.DIF_T_MIN, 1)}; t > {num(rules.DIF_T_MIN_MANY_ITEMS, 1)} bila lebih "
+                f"dari {rules.DIF_MANY_ITEMS} butir"),
         TechRow("Kategori ETS (A / B / C)",
                 f"{counts.get('A', 0)} / {counts.get('B', 0)} / {counts.get('C', 0)}",
                 f"C: DIF mutlak >= {num(rules.DIF_ETS_C)} dan bermakna melampaui {num(rules.DIF_ETS_B)} (p < 0,05)"),

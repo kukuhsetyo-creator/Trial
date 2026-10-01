@@ -28,26 +28,13 @@ from PySide6.QtWidgets import (
 )
 
 from ..interpret.glossary import tooltip
+from ..report.common import fmt_value
 from . import strings as S
 
 SORT_ROLE = Qt.ItemDataRole.UserRole + 1
 FLAG_BG = QColor("#FBE3D6")  # vermilion sangat pucat: baris yang perlu diperiksa
 MUTED_BG = QColor("#F2F2F2")  # baris ekstrem / tidak diestimasi
 STATUS_COLORS = {"hijau": "#009E73", "kuning": "#F0E442", "merah": "#D55E00", "abu": "#BDBDBD"}
-
-
-def fmt_number(v, decimals: int = 2) -> str:
-    if v is None:
-        return ""
-    if isinstance(v, (bool, np.bool_)):
-        return S.YES if v else ""
-    if isinstance(v, (int, np.integer)):
-        return str(int(v))
-    if isinstance(v, (float, np.floating)):
-        if not math.isfinite(float(v)):
-            return ""
-        return f"{float(v):.{decimals}f}".replace(".", ",")
-    return str(v)
 
 
 class DataFrameModel(QAbstractTableModel):
@@ -76,7 +63,7 @@ class DataFrameModel(QAbstractTableModel):
         v = self._values[index.row(), index.column()]
         key = self._cols[index.column()]
         if role == Qt.ItemDataRole.DisplayRole:
-            return fmt_number(v, self._dec.get(key, 2))
+            return fmt_value(v, self._dec.get(key, 2))
         if role == SORT_ROLE:
             if isinstance(v, (bool, np.bool_)):
                 return int(v)

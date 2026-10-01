@@ -77,8 +77,14 @@ def targeting_unit(person_rmse: float) -> float:
 # ---------------------------------------------------------------------------
 # Differential Item Functioning
 # ---------------------------------------------------------------------------
+#: Kriteria Draba (1977, MESA Memorandum No. 25): pergeseran >= 0,5 logit DAN
+#: t = kontras / sqrt(SE_A^2 + SE_B^2) melampaui ambang. Draba memakai t > 2
+#: sebagai ambang umum dan menaikkannya menjadi t > 2,4 (mengikuti Bonferroni)
+#: bila lebih dari 20 butir ditelaah sekaligus.
 DIF_CONTRAST_MIN = 0.5
-DIF_P_MAX = 0.05
+DIF_T_MIN = 2.0
+DIF_T_MIN_MANY_ITEMS = 2.4
+DIF_MANY_ITEMS = 20
 #: Kategori ETS dalam logit (Zwick, Thayer & Lewis, 1999, sebagaimana dipakai
 #: manual Winsteps): C bila |DIF| >= 0.64 dan p(|DIF| <= 0.43) < .05.
 #: Item DIF yang memenuhi kategori C -> lampu merah; DIF lain -> kuning.
@@ -99,6 +105,11 @@ CATEGORY_OUTFIT_MAX = 2.0
 def mnsq_range(strict: bool = False) -> tuple[float, float]:
     """Kembalikan rentang MNSQ yang dipakai untuk flag misfit."""
     return MNSQ_STRICT if strict else MNSQ_PRODUCTIVE
+
+
+def dif_t_min(n_items: int) -> float:
+    """Ambang |t| DIF menurut Draba (1977): 2,4 bila > 20 butir, selain itu 2."""
+    return DIF_T_MIN_MANY_ITEMS if n_items > DIF_MANY_ITEMS else DIF_T_MIN
 
 
 REFERENCES = {
@@ -145,8 +156,7 @@ REFERENCES = {
     ),
     "draba_1977": (
         "Draba, R. E. (1977). The identification and interpretation of item "
-        "bias (MESA Memorandum No. 25). Chicago: MESA, University of Chicago. "
-        "(Kriteria asli: pergeseran >= 0,5 logit dan t > 2,4 untuk tes > 20 butir.)"
+        "bias (MESA Memorandum No. 25). Chicago: MESA, University of Chicago."
     ),
     "zwick_1999": (
         "Zwick, R., Thayer, D. T., & Lewis, C. (1999). An empirical Bayes "

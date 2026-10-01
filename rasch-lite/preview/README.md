@@ -245,3 +245,10 @@ Diambil secara headless (`QT_QPA_PLATFORM=offscreen`, font DejaVu Sans) dari dat
 ![Hasil: DIF](gui/10_dif.png)
 
 ![Hasil: Grafik](gui/11_grafik.png)
+
+## Contoh laporan (Fase 4)
+
+- [laporan/contoh_laporan_dikotomus.html](laporan/contoh_laporan_dikotomus.html): laporan HTML mandiri, data contoh dikotomus.
+- [laporan/contoh_laporan_pcm.html](laporan/contoh_laporan_pcm.html): laporan HTML mandiri, data contoh politomus (PCM).
+- [laporan/contoh_laporan_dikotomus.pdf](laporan/contoh_laporan_dikotomus.pdf): laporan PDF (QTextDocument + QPdfWriter).
+- [laporan/contoh_laporan_dikotomus.xlsx](laporan/contoh_laporan_dikotomus.xlsx): workbook Excel, satu sheet per tabel.
