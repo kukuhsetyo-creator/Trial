@@ -75,7 +75,7 @@ Narasi lengkap tiga lapis: [narasi_dikotomus.md](narasi_dikotomus.md)
 - 🟢 **Reliabilitas** (Hijau): Tes cukup konsisten membedakan responden (reliabilitas person 0,89, separasi 2,87) dan urutan kesulitan butirnya mantap.
 - 🟢 **Kecocokan butir** (Hijau): Semua 12 butir berperilaku sesuai harapan model (MNSQ dalam rentang 0,5-1,5).
 - 🟢 **Dimensionalitas** (Hijau): Data mendukung asumsi bahwa tes mengukur satu hal utama (eigenvalue kontras pertama 1,52 < 2,0) tanpa pasangan butir yang saling bergantung.
-- 🟢 **Kesesuaian target** (Hijau): Tingkat kesulitan butir sesuai dengan kemampuan responden (selisih rata-rata 0,53 logit).
+- 🟡 **Kesesuaian target** (Kuning): Rata-rata responden berada 0,53 logit di atas rata-rata butir; responden cenderung mudah memberi skor tinggi pada butir-butir ini.
 - 🟢 **Fungsi kategori** (Hijau): Kategori jawaban berfungsi berurutan dan cukup sering dipakai.
 - 🟢 **DIF** (Hijau): Tidak ada butir yang berfungsi berbeda secara bermakna antara kelompok L dan P.
 
@@ -155,7 +155,7 @@ Narasi lengkap tiga lapis: [narasi_politomus_rsm.md](narasi_politomus_rsm.md)
 - 🟢 **Reliabilitas** (Hijau): Tes cukup konsisten membedakan responden (reliabilitas person 0,89, separasi 2,88) dan urutan kesulitan butirnya mantap.
 - 🟢 **Kecocokan butir** (Hijau): Semua 12 butir berperilaku sesuai harapan model (MNSQ dalam rentang 0,5-1,5).
 - 🟢 **Dimensionalitas** (Hijau): Data mendukung asumsi bahwa tes mengukur satu hal utama (eigenvalue kontras pertama 1,53 < 2,0) tanpa pasangan butir yang saling bergantung.
-- 🟢 **Kesesuaian target** (Hijau): Tingkat kesulitan butir sesuai dengan kemampuan responden (selisih rata-rata 0,54 logit).
+- 🟡 **Kesesuaian target** (Kuning): Rata-rata responden berada 0,54 logit di atas rata-rata butir; responden cenderung mudah memberi skor tinggi pada butir-butir ini.
 - 🔴 **Fungsi kategori** (Merah): Sebagian kategori jawaban tidak berfungsi berurutan: threshold tidak berurutan (A09).
 - 🟢 **DIF** (Hijau): Tidak ada butir yang berfungsi berbeda secara bermakna antara kelompok L dan P.
 
@@ -227,3 +227,21 @@ Narasi lengkap tiga lapis: [narasi_politomus_pcm.md](narasi_politomus_pcm.md)
 ![Matriks Yen's Q3](politomus_pcm/q3_heatmap.png)
 
 **Cara membaca grafik ini.** Setiap kotak menunjukkan keterkaitan sisa jawaban antara dua butir. Warna pucat berarti tidak ada keterkaitan tambahan; merah pekat berarti dua butir saling terkait di luar kemampuan yang diukur, biru berarti berlawanan arah. Kotak berbingkai hitam adalah pasangan yang ditandai dan perlu ditelaah, misalnya karena berasal dari satu wacana.
+
+## Tangkapan layar GUI (Fase 3)
+
+Diambil secara headless (`QT_QPA_PLATFORM=offscreen`, font DejaVu Sans) dari data contoh politomus dengan PCM.
+
+![Langkah 1: Impor Data](gui/1_import.png)
+
+![Langkah 2: Pilih Model](gui/2_model.png)
+
+![Langkah 3: Jalankan](gui/3_run_progress.png)
+
+![Hasil: Ringkasan](gui/4_ringkasan.png)
+
+![Hasil: Kategori](gui/7_kategori.png)
+
+![Hasil: DIF](gui/10_dif.png)
+
+![Hasil: Grafik](gui/11_grafik.png)

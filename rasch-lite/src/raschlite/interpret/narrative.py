@@ -397,9 +397,11 @@ def _targeting(res) -> tuple[Light, Section]:
     diff = s["targeting"]
     poly = res.model != "dichotomous"
     ad = abs(diff)
-    if ad < rules.TARGETING_GOOD:
+    unit = rules.targeting_unit(s["person"]["model_rmse"])
+    ratio = ad / unit
+    if ratio < rules.TARGETING_GOOD:
         status = rules.GREEN
-    elif ad < rules.TARGETING_POOR:
+    elif ratio < rules.TARGETING_POOR:
         status = rules.YELLOW
     else:
         status = rules.RED
@@ -461,8 +463,10 @@ def _targeting(res) -> tuple[Light, Section]:
         TechRow("Rerata measure person (non-ekstrem)", num(s["person_mean"]), ""),
         TechRow("SD measure person", num(s["person"]["sd"]), ""),
         TechRow("Rerata measure item", num(s["item_mean"]), "0 (identifikasi skala)"),
-        TechRow("Selisih (targeting)", num(diff),
-                f"selisih mutlak < {num(rules.TARGETING_GOOD, 1)} hijau; >= {num(rules.TARGETING_POOR, 1)} merah"),
+        TechRow("Selisih (targeting)", f"{num(diff)} logit = {num(ratio)} satuan",
+                f"< {num(rules.TARGETING_GOOD, 1)} satuan hijau; >= {num(rules.TARGETING_POOR, 1)} satuan merah"),
+        TechRow("Satuan targeting", f"{num(unit, 3)} logit",
+                "yang lebih kecil antara 1 logit dan RMSE person (MODEL); tafsiran teraman tabel Fisher (2007)"),
         TechRow(f"Person di atas {target_word} tersulit", pct(above, 1), ""),
         TechRow(f"Person di bawah {target_word} termudah", pct(below, 1), ""),
         TechRow("Skor ekstrem (maks / min)", f"{n_max} / {n_min}", ""),
@@ -630,6 +634,8 @@ def _dif(res) -> tuple[Light, Section]:
         TechRow("Kelompok (A / B)", f"{ga} / {gb}", "kontras = measure A - measure B"),
         TechRow("Kriteria penanda", f"kontras mutlak >= {num(rules.DIF_CONTRAST_MIN, 1)} dan p < {num(rules.DIF_P_MAX)}",
                 "uji t Welch"),
+        TechRow("Catatan kriteria", "Draba (1977) memakai t > 2,4 untuk tes > 20 butir",
+                f"RaschLite memakai p < {num(rules.DIF_P_MAX)} (default)"),
         TechRow("Kategori ETS (A / B / C)",
                 f"{counts.get('A', 0)} / {counts.get('B', 0)} / {counts.get('C', 0)}",
                 f"C: DIF mutlak >= {num(rules.DIF_ETS_C)} dan bermakna melampaui {num(rules.DIF_ETS_B)} (p < 0,05)"),

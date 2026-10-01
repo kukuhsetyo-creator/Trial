@@ -453,8 +453,9 @@ def dif_plot(res):
         ax.set_ylabel("Measure butir (logit)")
         ax.grid(axis="x", visible=False)
         handles, labels = ax.get_legend_handles_labels()
-        handles.append(Patch(color=st.PROBLEM, alpha=0.25))
-        labels.append("Ditandai DIF")
+        if dif["flag_dif"].any():
+            handles.append(Patch(color=st.PROBLEM, alpha=0.25))
+            labels.append("Ditandai DIF")
         ax.legend(handles, labels, loc="upper left", ncols=3)
         st.titles(ax, "Kesulitan Butir per Kelompok (DIF)", "Titik = measure per kelompok; garis = IK 95%")
     return fig

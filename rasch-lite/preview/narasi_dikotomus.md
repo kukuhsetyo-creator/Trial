@@ -127,7 +127,8 @@ Sebanyak 3 responden mendapat skor maksimum dan 0 skor minimum. Batas kemampuan 
 | Rerata measure person (non-ekstrem) | 0,25 |  |
 | SD measure person | 1,28 |  |
 | Rerata measure item | -0,00 | 0 (identifikasi skala) |
-| Selisih (targeting) | 0,25 | selisih mutlak < 1,0 hijau; >= 2,0 merah |
+| Selisih (targeting) | 0,25 logit = 0,42 satuan | < 1,0 satuan hijau; >= 2,0 satuan merah |
+| Satuan targeting | 0,588 logit | yang lebih kecil antara 1 logit dan RMSE person (MODEL); tafsiran teraman tabel Fisher (2007) |
 | Person di atas butir tersulit | 8,8% |  |
 | Person di bawah butir termudah | 3,5% |  |
 | Skor ekstrem (maks / min) | 3 / 0 |  |
@@ -164,12 +165,13 @@ Analisis ini melibatkan sekitar 304 responden kelompok L dan 291 responden kelom
 |---|---|---|
 | Kelompok (A / B) | L / P | kontras = measure A - measure B |
 | Kriteria penanda | kontras mutlak >= 0,5 dan p < 0,05 | uji t Welch |
+| Catatan kriteria | Draba (1977) memakai t > 2,4 untuk tes > 20 butir | RaschLite memakai p < 0,05 (default) |
 | Kategori ETS (A / B / C) | 19 / 0 / 1 | C: DIF mutlak >= 0,64 dan bermakna melampaui 0,43 (p < 0,05) |
 | S12 | 1,16 vs 2,13; kontras -0,97 (SE 0,21), t(553) = -4,60, p < 0,001 |  |
 
 Rujukan:
 
-- Draba, R. E. (1977). The identification and interpretation of item bias (MESA Memorandum No. 25). University of Chicago. [perlu verifikasi: nomor memorandum]
+- Draba, R. E. (1977). The identification and interpretation of item bias (MESA Memorandum No. 25). Chicago: MESA, University of Chicago. (Kriteria asli: pergeseran >= 0,5 logit dan t > 2,4 untuk tes > 20 butir.)
 - Zwick, R., Thayer, D. T., & Lewis, C. (1999). An empirical Bayes approach to Mantel-Haenszel DIF analysis. Journal of Educational Measurement, 36(1), 1-28.
 - Welch, B. L. (1947). The generalization of 'Student's' problem when several different population variances are involved. Biometrika, 34(1/2), 28-35.
 - Linacre, J. M. Winsteps Rasch measurement computer program user's guide. Beaverton, OR: Winsteps.com. (bagian Reliability and separation, Dimensionality, DIF, Table 3.2, STBIAS=, EXTRSCORE=)

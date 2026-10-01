@@ -3,7 +3,7 @@
 - 🟢 **Reliabilitas** (Hijau): Tes cukup konsisten membedakan responden (reliabilitas person 0,89, separasi 2,88) dan urutan kesulitan butirnya mantap.
 - 🟢 **Kecocokan butir** (Hijau): Semua 12 butir berperilaku sesuai harapan model (MNSQ dalam rentang 0,5-1,5).
 - 🟢 **Dimensionalitas** (Hijau): Data mendukung asumsi bahwa tes mengukur satu hal utama (eigenvalue kontras pertama 1,53 < 2,0) tanpa pasangan butir yang saling bergantung.
-- 🟢 **Kesesuaian target** (Hijau): Tingkat kesulitan butir sesuai dengan kemampuan responden (selisih rata-rata 0,54 logit).
+- 🟡 **Kesesuaian target** (Kuning): Rata-rata responden berada 0,54 logit di atas rata-rata butir; responden cenderung mudah memberi skor tinggi pada butir-butir ini.
 - 🔴 **Fungsi kategori** (Merah): Sebagian kategori jawaban tidak berfungsi berurutan: threshold tidak berurutan (A09).
 - 🟢 **DIF** (Hijau): Tidak ada butir yang berfungsi berbeda secara bermakna antara kelompok L dan P.
 
@@ -107,9 +107,13 @@ Rujukan:
 
 Targeting ibarat memasang mistar lompat tinggi. Bila mistar dipasang jauh di bawah kemampuan semua peserta, semuanya lolos dan kita tidak tahu siapa yang paling hebat; bila terlalu tinggi, semuanya gagal. Tes yang tepat sasaran berisi butir dengan kesulitan yang menyebar di sekitar kemampuan responden, sehingga setiap butir memberi informasi.
 
-Rata-rata measure responden adalah 0,54 logit, sedangkan rata-rata kesulitan butir ditetapkan 0 logit; selisihnya 0,54 logit, relatif kecil sehingga butir umumnya berada di sekitar kemampuan responden. Sekitar 2% responden berada di atas threshold tersulit dan 1% di bawah threshold termudah, wilayah tempat tes memberi sedikit informasi.
+Rata-rata measure responden adalah 0,54 logit, sedangkan rata-rata kesulitan butir ditetapkan 0 logit; selisihnya 0,54 logit, yang mengindikasikan responden cenderung mudah memberi skor tinggi pada butir-butir ini. Sekitar 2% responden berada di atas threshold tersulit dan 1% di bawah threshold termudah, wilayah tempat tes memberi sedikit informasi.
 
 Sebanyak 1 responden mendapat skor maksimum dan 0 skor minimum. Batas kemampuan mereka tidak terukur oleh tes ini, sehingga measure mereka hanya perkiraan dengan penyesuaian 0,3 poin.
+
+**Saran tindakan:**
+
+- Tambahkan butir yang lebih sulit (pernyataan yang lebih 'berat' untuk disetujui) agar responden berkemampuan tinggi juga terukur presisi.
 
 <details><summary>Detail teknis</summary>
 
@@ -118,7 +122,8 @@ Sebanyak 1 responden mendapat skor maksimum dan 0 skor minimum. Batas kemampuan 
 | Rerata measure person (non-ekstrem) | 0,54 |  |
 | SD measure person | 1,28 |  |
 | Rerata measure item | 0,00 | 0 (identifikasi skala) |
-| Selisih (targeting) | 0,54 | selisih mutlak < 1,0 hijau; >= 2,0 merah |
+| Selisih (targeting) | 0,54 logit = 1,38 satuan | < 1,0 satuan hijau; >= 2,0 satuan merah |
+| Satuan targeting | 0,393 logit | yang lebih kecil antara 1 logit dan RMSE person (MODEL); tafsiran teraman tabel Fisher (2007) |
 | Person di atas threshold tersulit | 2,3% |  |
 | Person di bawah threshold termudah | 0,9% |  |
 | Skor ekstrem (maks / min) | 1 / 0 |  |
@@ -178,11 +183,12 @@ Analisis ini melibatkan sekitar 178 responden kelompok L dan 170 responden kelom
 |---|---|---|
 | Kelompok (A / B) | L / P | kontras = measure A - measure B |
 | Kriteria penanda | kontras mutlak >= 0,5 dan p < 0,05 | uji t Welch |
+| Catatan kriteria | Draba (1977) memakai t > 2,4 untuk tes > 20 butir | RaschLite memakai p < 0,05 (default) |
 | Kategori ETS (A / B / C) | 12 / 0 / 0 | C: DIF mutlak >= 0,64 dan bermakna melampaui 0,43 (p < 0,05) |
 
 Rujukan:
 
-- Draba, R. E. (1977). The identification and interpretation of item bias (MESA Memorandum No. 25). University of Chicago. [perlu verifikasi: nomor memorandum]
+- Draba, R. E. (1977). The identification and interpretation of item bias (MESA Memorandum No. 25). Chicago: MESA, University of Chicago. (Kriteria asli: pergeseran >= 0,5 logit dan t > 2,4 untuk tes > 20 butir.)
 - Zwick, R., Thayer, D. T., & Lewis, C. (1999). An empirical Bayes approach to Mantel-Haenszel DIF analysis. Journal of Educational Measurement, 36(1), 1-28.
 - Welch, B. L. (1947). The generalization of 'Student's' problem when several different population variances are involved. Biometrika, 34(1/2), 28-35.
 - Linacre, J. M. Winsteps Rasch measurement computer program user's guide. Beaverton, OR: Winsteps.com. (bagian Reliability and separation, Dimensionality, DIF, Table 3.2, STBIAS=, EXTRSCORE=)

@@ -55,14 +55,24 @@ CONTRAST_EIGENVALUE_RED = 3.0
 Q3_RELATIVE_CUTOFF = 0.2
 
 # ---------------------------------------------------------------------------
-# Kesesuaian target (targeting): |rerata person - rerata item| dalam logit
+# Kesesuaian target (targeting): |rerata person - rerata item|
 # ---------------------------------------------------------------------------
-#: Di bawah nilai ini -> hijau; antara keduanya -> kuning; >= POOR -> merah.
-#: Titik potong 1 dan 2 adalah konvensi yang ditetapkan untuk RaschLite;
-#: tabel Fisher (2007) memakai angka 1 dan 2 untuk kriteria targeting
-#: [perlu verifikasi: satuan pada tabel asli].
+#: Tabel Fisher (2007) menggolongkan selisih rerata person dan item: < 1 "good",
+#: 1-2 "fair", > 2 "poor". Satuan pada tabel asli (logit atau galat ukur) tidak
+#: dapat dipastikan dari sumber yang tersedia, sehingga RaschLite memakai tafsiran
+#: yang paling aman: satuan = yang lebih kecil antara 1 logit dan RMSE person
+#: (MODEL). Kriteria ini tidak pernah lebih longgar daripada kedua tafsiran.
+#: Selisih < GOOD satuan -> hijau; >= POOR satuan -> merah; di antaranya kuning.
 TARGETING_GOOD = 1.0
 TARGETING_POOR = 2.0
+
+
+def targeting_unit(person_rmse: float) -> float:
+    """Satuan targeting (logit): min(1 logit, RMSE person)."""
+    try:
+        return min(1.0, float(person_rmse)) if float(person_rmse) > 0 else 1.0
+    except (TypeError, ValueError):
+        return 1.0
 
 # ---------------------------------------------------------------------------
 # Differential Item Functioning
@@ -135,8 +145,8 @@ REFERENCES = {
     ),
     "draba_1977": (
         "Draba, R. E. (1977). The identification and interpretation of item "
-        "bias (MESA Memorandum No. 25). University of Chicago. "
-        "[perlu verifikasi: nomor memorandum]"
+        "bias (MESA Memorandum No. 25). Chicago: MESA, University of Chicago. "
+        "(Kriteria asli: pergeseran >= 0,5 logit dan t > 2,4 untuk tes > 20 butir.)"
     ),
     "zwick_1999": (
         "Zwick, R., Thayer, D. T., & Lewis, C. (1999). An empirical Bayes "
