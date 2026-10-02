@@ -536,34 +536,39 @@
     }
     if (it.synthesis) {
       out.push(h("h2", { class: "title" }, "Sintesis"));
-      out.push(h("div", { class: "synth" }, ...it.synthesis.map((p) => h("p", {}, p.text, confBadge(p.confidence)))));
+      out.push(h("ol", { class: "synth" }, ...it.synthesis.map((p) => h("li", {}, h("span", { class: "txt" }, p.text), confBadge(p.confidence)))));
     }
     out.push(h("h2", { class: "title" }, SUMMARY_TITLE));
     out.push(h("div", { class: "lights" }, ...it.lights.map((l) => {
       const gk = S.LIGHT_GLOSSARY[l.key], g = gk && TEXT.glossary[gk];
-      return h("div", { class: "light", title: g ? `${g.term}: ${g.short}` : null },
-        h("div", {}, h("span", { class: `dot s-${l.status}` }), h("b", {}, l.title), h("div", { class: "status" }, STATUS_X[l.status] || l.status), l.confidence ? h("div", { class: "status" }, confBadge(l.confidence)) : null),
-        h("div", {}, l.sentence));
+      return h("div", { class: `light st-${l.status}`, title: g ? `${g.term}: ${g.short}` : null },
+        h("div", { class: "lhead" }, h("span", { class: `dot s-${l.status}` }), h("b", {}, l.title),
+          h("span", { class: "pill" }, STATUS_X[l.status] || l.status), h("span", { style: "flex:1" }), confBadge(l.confidence)),
+        h("div", { class: "lbody" }, l.sentence));
     })));
     if (it.actions && it.actions.length) {
       out.push(h("h2", { class: "title" }, "Urutan tindakan"));
       out.push(h("p", { class: "help" }, "Tindakan diurutkan menurut ketergantungan logisnya: masalah kunci dan data diselesaikan sebelum menilai responden, responden sebelum butir, butir sebelum struktur dimensi, dan seterusnya, karena perbaikan di tahap awal dapat mengubah temuan di tahap berikutnya."));
-      out.push(h("ol", { class: "stages" }, ...it.actions.map((a) => h("li", {}, h("span", { class: "stage" }, `${a.label}. `), a.text))));
+      const groups = [];
+      for (const a of it.actions) { const g = groups[groups.length - 1]; if (g && g.label === a.label) g.items.push(a.text); else groups.push({ label: a.label, items: [a.text] }); }
+      out.push(h("div", { class: "stages" }, ...groups.map((g, k) => h("div", { class: "stage-row" },
+        h("div", { class: "stage-no" }, String(k + 1)), h("div", {}, h("div", { class: "stage" }, g.label), h("ul", {}, ...g.items.map((t) => h("li", {}, t))))))));
     }
     out.push(h("h2", { class: "title" }, S.EXPLANATION));
-    it.intro.forEach((p) => out.push(h("p", {}, p)));
+    out.push(h("div", { class: "intro" }, ...it.intro.map((p) => h("p", {}, p))));
     for (const sec of it.sections) {
-      out.push(h("h3", {}, h("span", { class: `dot s-${sec.status}` }), sec.title, confBadge(sec.confidence)));
-      sec.paragraphs.forEach((p) => out.push(h("p", {}, p)));
-      if (sec.actions.length) out.push(h("p", {}, h("b", {}, S.ACTIONS)), h("ul", {}, ...sec.actions.map((a) => h("li", {}, a))));
+      const box = h("section", { class: "sec" }, h("h3", {}, h("span", { class: `dot s-${sec.status}` }), sec.title, h("span", { style: "flex:1" }), confBadge(sec.confidence)));
+      sec.paragraphs.forEach((p) => box.append(h("p", {}, p)));
+      if (sec.actions.length) box.append(h("p", { class: "act-head" }, h("b", {}, S.ACTIONS)), h("ul", {}, ...sec.actions.map((a) => h("li", {}, a))));
       if (sec.technical.length) {
-        out.push(h("details", {}, h("summary", {}, S.REPORT_TECHNICAL),
-          h("table", { class: "tech" }, h("tr", {}, ...S.TECH_HEAD.map((x) => h("th", {}, x))),
-            ...sec.technical.map((t) => h("tr", {}, h("td", {}, t.label.trim()), h("td", {}, t.value), h("td", {}, t.criterion)))),
+        box.append(h("details", {}, h("summary", {}, S.REPORT_TECHNICAL),
+          h("div", { class: "tablewrap" }, h("table", { class: "tech" }, h("tr", {}, ...S.TECH_HEAD.map((x) => h("th", {}, x))),
+            ...sec.technical.map((t) => h("tr", {}, h("td", {}, t.label.trim()), h("td", {}, t.value), h("td", {}, t.criterion))))),
           sec.references.length ? h("div", { class: "refs" }, h("p", {}, S.REFERENCES + ":"), h("ul", {}, ...sec.references.map((r) => h("li", {}, r)))) : null));
       }
+      out.push(box);
     }
-    return out;
+    return h("div", { class: "summary" }, ...out);
   }
 
   function dataQualityTab(res, adv, svgBox) {

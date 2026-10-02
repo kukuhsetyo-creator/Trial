@@ -96,3 +96,46 @@ footer { color: var(--bronze); font-size: 11px; letter-spacing: 3px; text-transf
 ol.stages { padding-left: 20px; } ol.stages li { margin: 5px 0; } ol.stages .stage { color: var(--bronze); font-weight: 600; }
 .mini { font-size: 12.5px; color: var(--muted); }
 table.data td.st-serius { background: var(--err-bg); } table.data td.st-telaah { background: var(--warn-bg); }
+
+/* Tata letak tab Ringkasan: kolom baca terbatas, kartu lampu dua kolom, tahapan bernomor */
+.summary { max-width: 1060px; margin: 0 auto; padding: 4px 6px 8px; }
+.summary h2.title { font-size: 21px; letter-spacing: 1.5px; margin: 30px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.summary > .banner:first-child + h2.title, .summary > h2.title:first-child { margin-top: 8px; }
+.summary p { font-size: 14.5px; line-height: 1.7; max-width: 76ch; margin: 0 0 10px; }
+.summary p.help { color: var(--muted); font-size: 13.5px; }
+ol.synth { list-style: none; counter-reset: syn; margin: 0; padding: 0; display: grid; gap: 10px; }
+ol.synth li { counter-increment: syn; position: relative; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--navy);
+  border-radius: 10px; padding: 12px 16px 12px 52px; line-height: 1.65; font-size: 14.5px; }
+ol.synth li::before { content: counter(syn); position: absolute; left: 14px; top: 12px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--navy); color: var(--navytext); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+ol.synth li .txt { display: block; max-width: 82ch; }
+ol.synth li .conf { margin: 6px 0 0; }
+.summary .lights { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 860px) { .summary .lights { grid-template-columns: 1fr; } }
+.summary .light { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-top: 4px solid var(--abu); }
+.summary .light.st-hijau { border-top-color: var(--hijau); } .summary .light.st-kuning, .summary .light.st-tentatif { border-top-color: var(--kuning); }
+.summary .light.st-merah { border-top-color: var(--merah); }
+.summary .lhead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.summary .lhead b { font-size: 15px; }
+.summary .lhead .dot { margin-right: 2px; }
+.pill { font-size: 11.5px; color: var(--ink2); background: var(--sand); border-radius: 10px; padding: 1px 8px; margin-left: 4px; }
+.summary .lbody { color: var(--ink); line-height: 1.6; font-size: 14px; }
+.summary .conf { margin-left: 0; }
+.stages { display: grid; gap: 10px; }
+.stage-row { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.stage-no { width: 30px; height: 30px; border-radius: 50%; background: var(--sand); color: var(--bronze); font-weight: 700; display: grid; place-items: center; }
+.stage-row .stage { color: var(--bronze); font-weight: 700; letter-spacing: .5px; margin: 4px 0 4px; }
+.stage-row ul { margin: 0; padding-left: 18px; } .stage-row li { margin: 4px 0; line-height: 1.6; max-width: 84ch; }
+.summary .intro { background: var(--sand); border-radius: 10px; padding: 12px 16px 4px; margin-bottom: 14px; }
+.summary section.sec { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 4px 18px 12px; margin: 14px 0; }
+.summary section.sec h3 { display: flex; align-items: center; gap: 4px; font-size: 16.5px; margin: 12px 0 10px; }
+.summary section.sec ul { max-width: 80ch; } .summary section.sec li { line-height: 1.6; margin: 3px 0; }
+.summary section.sec p.act-head { margin-top: 12px; }
+.summary details { margin: 10px 0 2px; } .summary .tablewrap { max-height: none; }
+.summary table.tech { width: 100%; } .summary table.tech td:first-child { width: 34%; }
+.summary ol.synth { background: none; border: 0; border-radius: 0; padding: 0; margin: 0; }
+@media (max-width: 600px) {
+  .summary { padding: 0; }
+  ol.synth li { padding: 12px 12px 12px 44px; } ol.synth li::before { left: 10px; }
+  .summary section.sec { padding: 4px 12px 10px; } .stage-row { grid-template-columns: 1fr; } .stage-no { display: none; }
+}

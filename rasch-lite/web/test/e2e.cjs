@@ -43,7 +43,7 @@ const baseLights = (page) => page.evaluate(() => RaschInterpret.interpret(RaschA
   const sentences = await baseLights(page);
   const pyLights = g.markdown.split("## Penjelasan")[0].split("\n").filter((l) => l.startsWith("- ")).map((l) => l.replace(/^- \S+ \*\*.*?\*\* \(.*?\): /, ""));
   check("dikotomus: lapisan narasi dasar identik dengan versi desktop", JSON.stringify(sentences) === JSON.stringify(pyLights));
-  check("dikotomus: sintesis lintas indikator tampil", (await page.$$(".synth p")).length >= 1);
+  check("dikotomus: sintesis lintas indikator tampil", (await page.$$(".synth li")).length >= 1);
   check("dikotomus: setiap lampu memiliki tingkat keyakinan", (await page.$$eval(".light .conf", (e) => e.length)) >= 6);
   await tab("Item Measures");
   await shot("5_item_measures");
