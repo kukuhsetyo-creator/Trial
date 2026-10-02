@@ -5267,6 +5267,7 @@ table.data td.st-serius { background: var(--err-bg); } table.data td.st-telaah {
     audit: "Unduh Berkas Audit (ZIP)",
     keyFound: "Baris kunci ditemukan (baris {row}, {n} butir): jawaban mentah akan diskor otomatis dengan kunci tersebut dan analisis distraktor dijalankan.",
   };
+  const SUMMARY_TITLE = "Brief Summary"; // judul ringkasan lampu (versi HTML)
   const STATUS_X = { ...S.STATUS_TEXT, tentatif: "Belum dapat ditentukan" };
   const LIGHT_X = { ...TEXT.lightStatus, tentatif: "Belum dapat ditentukan" };
   const TINT_X = { ...TH.STATUS_TINT, tentatif: TH.STATUS_TINT.kuning };
@@ -5768,7 +5769,7 @@ table.data td.st-serius { background: var(--err-bg); } table.data td.st-telaah {
       out.push(h("h2", { class: "title" }, "Sintesis"));
       out.push(h("div", { class: "synth" }, ...it.synthesis.map((p) => h("p", {}, p.text, confBadge(p.confidence)))));
     }
-    out.push(h("h2", { class: "title" }, S.SUMMARY_1MIN));
+    out.push(h("h2", { class: "title" }, SUMMARY_TITLE));
     out.push(h("div", { class: "lights" }, ...it.lights.map((l) => {
       const gk = S.LIGHT_GLOSSARY[l.key], g = gk && TEXT.glossary[gk];
       return h("div", { class: "light", title: g ? `${g.term}: ${g.short}` : null },
@@ -5972,7 +5973,7 @@ table.data td.st-serius { background: var(--err-bg); } table.data td.st-telaah {
     const sheets = [];
     const rows = [[{ v: S.REPORT_TITLE, bold: true, size: 14, color: TH.NAVY }], [generatedLine()], []];
     for (const [l, v] of metadata(res)) rows.push([bold(l), v]);
-    rows.push([], [{ v: S.SUMMARY_1MIN, bold: true, size: 12, color: TH.BRONZE }]);
+    rows.push([], [{ v: SUMMARY_TITLE, bold: true, size: 12, color: TH.BRONZE }]);
     rows.push(S.LIGHTS_HEAD.map((x) => bold(x, { fill: TH.SAND, wrap: true })));
     for (const l of it.lights) { const f = TINT_X[l.status]; rows.push([{ v: l.title, fill: f }, { v: LIGHT_X[l.status], fill: f }, { v: l.sentence + (l.confidence ? ` (${I_CONF[l.confidence.level]})` : ""), fill: f, wrap: true }]); }
     if (it.synthesis) {
@@ -6100,7 +6101,7 @@ figcaption{background:var(--card);border-left:3px solid var(--bronze);padding:8p
 <h2 class="title">${esc(S.REPORT_META)}</h2><table class="data meta">${metadata(res).map(([l, v]) => `<tr><td>${esc(l)}</td><td>${esc(v)}</td></tr>`).join("")}</table>
 ${it.cautions.length ? `<h2 class="title">${esc(S.CAUTIONS)}</h2><div class="banner warning"><ul>${it.cautions.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : ""}
 ${it.synthesis ? `<h2 class="title">Sintesis</h2><div class="synth">${it.synthesis.map((p) => `<p>${esc(p.text)}${p.confidence ? ` <span class="conf">${esc(I_CONF[p.confidence.level])}</span>` : ""}</p>`).join("")}</div>` : ""}
-<h2 class="title">${esc(S.SUMMARY_1MIN)}</h2><div class="lights">${it.lights.map((l) => `<div class="light"><div><span class="dot s-${l.status}"></span><b>${esc(l.title)}</b><div class="status">${esc(STATUS_X[l.status] || l.status)}${l.confidence ? ` · ${esc(I_CONF[l.confidence.level])}` : ""}</div></div><div>${esc(l.sentence)}</div></div>`).join("")}</div>
+<h2 class="title">${esc(SUMMARY_TITLE)}</h2><div class="lights">${it.lights.map((l) => `<div class="light"><div><span class="dot s-${l.status}"></span><b>${esc(l.title)}</b><div class="status">${esc(STATUS_X[l.status] || l.status)}${l.confidence ? ` · ${esc(I_CONF[l.confidence.level])}` : ""}</div></div><div>${esc(l.sentence)}</div></div>`).join("")}</div>
 ${it.actions && it.actions.length ? `<h2 class="title">Urutan tindakan</h2><ol class="stages">${it.actions.map((a) => `<li><span class="stage">${esc(a.label)}.</span> ${esc(a.text)}</li>`).join("")}</ol>` : ""}
 <h2 class="title">${esc(S.EXPLANATION)}</h2>${it.intro.map((p) => `<p>${esc(p)}</p>`).join("")}
 ${it.sections.map((sec) => `<h3><span class="dot s-${sec.status}"></span>${esc(sec.title)}</h3>${sec.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}` +

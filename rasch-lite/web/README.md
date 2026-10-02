@@ -2,7 +2,7 @@
 
 `RaschLite.html` adalah seluruh aplikasi RaschLite dalam satu berkas (sekitar 560 KB). Berkas ini dapat dibagikan apa adanya, misalnya lewat surel, flashdisk, atau drive bersama. Penerima cukup mengklik dua kali berkas itu untuk membukanya di Chrome, Edge, Firefox, atau Safari versi terbaru, tanpa instalasi dan tanpa koneksi internet. Semua perhitungan berjalan di browser penerima, dan data yang dibuka tidak pernah dikirim ke mana pun.
 
-Alur kerjanya sama dengan versi desktop: Impor Data (CSV atau Excel, termasuk data contoh), Pilih Model (Dichotomous, Rating Scale, atau Partial Credit), Jalankan, lalu Hasil. Hasil memuat Ringkasan 1 Menit, tabel Item Measures, Person Measures, Category Structure, Dimensionality, Local Dependence, DIF, sepuluh grafik beserta panel "Cara membaca grafik ini", dan glosarium. Tersedia empat ekspor:
+Alur kerjanya sama dengan versi desktop: Impor Data (CSV atau Excel, termasuk data contoh), Pilih Model (Dichotomous, Rating Scale, atau Partial Credit), Jalankan, lalu Hasil. Hasil memuat Brief Summary, tabel Item Measures, Person Measures, Category Structure, Dimensionality, Local Dependence, DIF, sepuluh grafik beserta panel "Cara membaca grafik ini", dan glosarium. Tersedia empat ekspor:
 
 | Ekspor | Hasil |
 |---|---|
