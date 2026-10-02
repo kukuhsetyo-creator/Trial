@@ -53,6 +53,29 @@
       <label><input type="checkbox" id="strict"> <span id="strict-label"></span></label><br>
       <label><input type="checkbox" id="dif"> <span id="dif-label"></span></label>
     </div>
+    <div class="card" id="adv-card">
+      <span class="label">Diagnostik lanjutan</span>
+      <div class="grid2">
+        <div>
+          <label class="field">Jenis instrumen</label>
+          <label><input type="radio" name="testtype" value="tes"> Tes kemampuan (jawaban benar/salah)</label><br>
+          <label><input type="radio" name="testtype" value="angket"> Angket atau skala sikap</label>
+          <label class="field" for="n-options">Jumlah opsi jawaban per butir (pilihan ganda; kosongkan bila tidak relevan)</label>
+          <input type="text" id="n-options" inputmode="numeric" placeholder="mis. 4">
+          <label class="field" for="sim-reps">Simulasi data patuh model (ambang eigenvalue/Q3, pemulihan parameter)</label>
+          <select id="sim-reps"><option value="0">Tidak dijalankan (ambang tetap)</option><option value="30">30 replikasi</option><option value="50">50 replikasi</option><option value="100">100 replikasi</option></select>
+          <label class="field">Analisis tambahan</label>
+          <label><input type="checkbox" id="opt-sens" checked> Analisis sensitivitas tanpa responden menyimpang</label><br>
+          <label><input type="checkbox" id="opt-tailored" checked> Tailored analysis untuk tebakan (tes dikotomus)</label><br>
+          <label><input type="checkbox" id="opt-cmle"> CMLE sebagai estimator pembanding</label>
+        </div>
+        <div>
+          <label class="field">Data kosong</label>
+          <div id="missing-summary" class="help"></div>
+          <div id="treatments" class="models"></div>
+        </div>
+      </div>
+    </div>
     <div id="category-banner" class="banner"></div>
     <div id="notes-banner" class="banner"></div>
     <div class="nav"><button id="btn-back2" class="btn-back"></button><button id="btn-run" class="primary"></button></div>
@@ -72,7 +95,7 @@
       <div class="meta" id="result-meta"></div>
       <div class="row" id="export-buttons">
         <button id="btn-excel" class="primary"></button><button id="btn-html"></button>
-        <button id="btn-pdf"></button><button id="btn-charts"></button>
+        <button id="btn-pdf"></button><button id="btn-charts"></button><button id="btn-audit"></button>
       </div>
     </div>
     <div id="export-banner" class="banner"></div>
@@ -85,6 +108,9 @@
 <script>window.RASCH_TEXT = __TEXT__; window.RASCH_SAMPLES = __SAMPLES__; window.RASCH_LOGO = "__LOGO__";</script>
 <script>__ENGINE__</script>
 <script>__INTERPRET__</script>
+<script>__ADVANCED__</script>
+<script>__CMLE__</script>
+<script>__INFERENCE__</script>
 <script>__CHARTS__</script>
 <script>__XLSX__</script>
 <script>__APP__</script>

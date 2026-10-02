@@ -407,8 +407,18 @@
         issues.push(issue("info", "dichotomous_recode", pyFormat(M("DICHOTOMOUS_RECODE"), { lo: vals[0], hi: vals[1] })));
       }
     }
+    // Tambahan versi HTML (tidak memengaruhi hasil): indeks baris asal dan nilai grup apa adanya
+    // untuk diagnostik lanjutan (DIF lebih dari dua kelompok, analisis distraktor).
+    const rowIndex = [];
+    keepP.forEach((k, n) => { if (k) rowIndex.push(n); });
+    let groupValues = null;
+    if (groupCol !== null) {
+      const gi = colIndex.get(String(groupCol));
+      groupValues = rowIndex.map((n) => { const v = table.rows[n][gi]; return tokens.has(cellToken(v)) ? null : String(v).trim(); });
+    }
     return {
       personIds: ids, itemNames, raw, groups, groupName: groups !== null ? groupCol : null,
+      rowIndex, groupValues, groupColumn: groupCol,
       responseType: det.responseType, recommendedModel: det.recommended, recommendationReason: det.reason,
       issues, excludedItems, excludedPersons,
       get nPersons() { return this.raw.length; }, get nItems() { return this.itemNames.length; },
@@ -1491,6 +1501,9 @@
     setText, pyFormat, DataValidationError, EstimationCancelled, parseCsv, prepareData, categoryIssues, codeResponses,
     moments, buildDelta, estimate, estimateAsync, runAnalysis, runAnalysisAsync, finishAnalysis, stdtr, stdtrit,
     symmetricEigen, solveItemLocations, betainc, EXTREME_SCORE_ADJUSTMENT,
+    // dipakai modul diagnostik lanjutan (advanced.js)
+    solvePersons, residualPca, yenQ3, pairwiseCorr, separationStatistics, fitStatistics, pointMeasure, difAnalysis,
+    ndtr, solve, inverse, lgamma, cronbachAlpha,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.RaschEngine = api;

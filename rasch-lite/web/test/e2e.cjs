@@ -10,6 +10,9 @@ const golden = JSON.parse(fs.readFileSync(path.join(__dirname, "golden.json"), "
 const results = [];
 const check = (name, ok, detail = "") => { results.push([name, !!ok, detail]); console.log(`${ok ? "OK   " : "GAGAL"} ${name}${detail ? " | " + detail : ""}`); };
 const numId = (v) => (v === null ? "" : v.toFixed(2).replace(".", ","));
+const DATA_TP = process.env.RL_TESPERF || null; // data Tes Performansi (opsional, tidak disimpan di repo)
+// Kalimat lampu lapisan dasar (setara versi desktop) dihitung ulang di halaman dari hasil yang sama.
+const baseLights = (page) => page.evaluate(() => RaschInterpret.interpret(RaschApp.state.res).lights.map((l) => l.sentence));
 
 (async () => {
   const browser = await pw.chromium.launch();
@@ -36,10 +39,12 @@ const numId = (v) => (v === null ? "" : v.toFixed(2).replace(".", ","));
   await shot("4_ringkasan");
   const g = golden.find((x) => x.case.name === "sample_dich");
   const lights = await page.$$eval(".light", (els) => els.map((e) => e.textContent));
-  check("dikotomus: enam lampu", lights.length === 6, lights.length + " lampu");
-  const sentences = await page.$$eval(".light > div:nth-child(2)", (els) => els.map((e) => e.textContent));
+  check("dikotomus: delapan lampu (dengan Data Quality dan Estimation Check)", lights.length === 8, lights.length + " lampu");
+  const sentences = await baseLights(page);
   const pyLights = g.markdown.split("## Penjelasan")[0].split("\n").filter((l) => l.startsWith("- ")).map((l) => l.replace(/^- \S+ \*\*.*?\*\* \(.*?\): /, ""));
-  check("dikotomus: kalimat lampu identik dengan versi desktop", JSON.stringify(sentences) === JSON.stringify(pyLights));
+  check("dikotomus: lapisan narasi dasar identik dengan versi desktop", JSON.stringify(sentences) === JSON.stringify(pyLights));
+  check("dikotomus: sintesis lintas indikator tampil", (await page.$$(".synth p")).length >= 1);
+  check("dikotomus: setiap lampu memiliki tingkat keyakinan", (await page.$$eval(".light .conf", (e) => e.length)) >= 6);
   await tab("Item Measures");
   await shot("5_item_measures");
   const firstRow = await page.$$eval("#panels .tabpanel.active tbody tr:first-child td", (tds) => tds.map((t) => t.textContent));
@@ -48,7 +53,10 @@ const numId = (v) => (v === null ? "" : v.toFixed(2).replace(".", ","));
   await page.click("#panels .tabpanel.active th[data-col='measure']");
   const sorted = await page.$$eval("#panels .tabpanel.active tbody tr td:nth-child(5)", (tds) => tds.map((t) => Number(t.textContent.replace(",", "."))));
   check("tabel dapat diurutkan", sorted.every((v, k) => k === 0 || v >= sorted[k - 1]));
-  for (const t of ["Person Measures", "Category Structure", "Dimensionality", "Local Dependence", "DIF", "Grafik", "Glosarium"]) await tab(t);
+  for (const t of ["Person Measures", "Kualitas Data", "Diagnostik Item", "Category Structure", "Reliabilitas & Targeting", "Dimensionality", "Local Dependence", "DIF", "Validasi", "Grafik", "Glosarium"]) await tab(t);
+  await tab("Validasi");
+  const valText = await page.textContent("#panels .tabpanel.active");
+  check("dikotomus: validasi CMLE dan pemulihan parameter", valText.includes("JMLE dibandingkan dengan CMLE") && valText.includes("Studi pemulihan parameter"));
   await tab("Grafik");
   const options = await page.$$eval("#panels .tabpanel.active select:first-of-type option", (o) => o.map((x) => x.value));
   let drawn = 0;
@@ -101,9 +109,10 @@ print(json.dumps({"n": len(names), "png": len(png), "svg": sum(n.endswith(".svg"
     await page.click("#btn-run");
     await page.waitForSelector("#page-results.active", { timeout: 60000 });
     const gm = golden.find((x) => x.case.name === "sample_" + model);
-    const sent = await page.$$eval(".light > div:nth-child(2)", (els) => els.map((e) => e.textContent));
+    const sent = await baseLights(page);
     const pyL = gm.markdown.split("## Penjelasan")[0].split("\n").filter((l) => l.startsWith("- ")).map((l) => l.replace(/^- \S+ \*\*.*?\*\* \(.*?\): /, ""));
-    check(`${model}: kalimat lampu identik dengan versi desktop`, JSON.stringify(sent) === JSON.stringify(pyL));
+    check(`${model}: lapisan narasi dasar identik dengan versi desktop`, JSON.stringify(sent) === JSON.stringify(pyL));
+    check(`${model}: CMLE ${model} konvergen`, await page.evaluate(() => RaschApp.state.adv.cmle && RaschApp.state.adv.cmle.converged));
     await tab("Category Structure");
     const nrow = await page.$$eval("#panels .tabpanel.active tbody tr", (r) => r.length);
     check(`${model}: tabel Category Structure`, nrow === gm.categories.length, `${nrow} baris`);
@@ -119,8 +128,79 @@ print(json.dumps({"n": len(names), "png": len(png), "svg": sum(n.endswith(".svg"
   await page.click("#btn-next1");
   await page.click("#btn-run");
   await page.waitForSelector("#page-results.active", { timeout: 60000 });
-  const sentX = await page.$$eval(".light > div:nth-child(2)", (els) => els.map((e) => e.textContent));
+  const sentX = await baseLights(page);
   check("unggah .xlsx: hasil sama dengan data contoh CSV", JSON.stringify(sentX) === JSON.stringify(pyLights));
+
+  // Jawaban mentah dengan baris KUNCI: satu butir sengaja diberi kunci keliru
+  {
+    const r = (() => { let a = 7; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();
+    const L = 12, opts = ["A", "B", "C", "D"], keys = Array.from({ length: L }, (_, i) => opts[i % 4]);
+    const lines = ["ID," + keys.map((_, i) => `Q${i + 1}`).join(","), "KUNCI," + keys.map((k, i) => (i === 5 ? (k === "A" ? "B" : "A") : k)).join(",")];
+    for (let n = 0; n < 300; n++) {
+      const th = (r() + r() + r() - 1.5) * 2;
+      lines.push(`p${n},` + keys.map((k, i) => {
+        const b = -1.5 + 3 * i / (L - 1);
+        if (r() < 1 / (1 + Math.exp(-(th - b)))) return k;
+        const wrong = opts.filter((o) => o !== k); return wrong[Math.floor(r() * 3)];
+      }).join(","));
+    }
+    const f = path.join(tmp, "jawaban_mentah.csv"); fs.writeFileSync(f, lines.join("\n"));
+    await page.click("#btn-new");
+    await page.setInputFiles("#file", f);
+    await page.waitForFunction(() => !document.querySelector("#import-form").hidden);
+    const kb = await page.textContent("#import-banner");
+    check("jawaban mentah: baris KUNCI dikenali", kb.includes("Baris kunci ditemukan") && kb.includes("12 butir"), kb.slice(0, 80));
+    await page.click("#btn-next1");
+    await page.waitForSelector("#page-model.active");
+    check("jawaban mentah: jumlah opsi terisi otomatis", (await page.inputValue("#n-options")) === "4");
+    await page.click("#btn-run");
+    await page.waitForSelector("#page-results.active", { timeout: 120000 });
+    const dis = await page.evaluate(() => RaschApp.state.adv.distractors.items.filter((x) => x.flag).map((x) => x.item));
+    check("jawaban mentah: kunci keliru Q6 terdeteksi lewat distraktor", dis.includes("Q6"), dis.join(","));
+    await tab("Diagnostik Item");
+    await shot("12_distraktor");
+  }
+
+  // Data Tes Performansi (bila tersedia): speeded, empat blok, perlakuan Ludlow & O'Leary
+  if (DATA_TP && fs.existsSync(DATA_TP)) {
+    await page.click("#btn-new");
+    await page.setInputFiles("#file", DATA_TP);
+    await page.waitForFunction(() => !document.querySelector("#import-form").hidden);
+    await page.selectOption("#group-col", "Gender");
+    await page.uncheck('#items input[value="Gender"]').catch(() => {});
+    await page.click("#btn-next1");
+    await page.waitForSelector("#page-model.active");
+    const msum = await page.textContent("#missing-summary");
+    check("Tes Performansi: blok dan pola speeded dikenali sebelum estimasi", msum.includes("4 blok") && msum.includes("speeded"), msum.slice(0, 120));
+    await shot("2b_model_lanjutan");
+    await page.check('#treatments input[value="lo1999"]');
+    await page.fill("#n-options", "5");
+    const t0 = Date.now();
+    await page.click("#btn-run");
+    await page.waitForSelector("#page-results.active", { timeout: 300000 });
+    const secs = (Date.now() - t0) / 1000;
+    const st = await page.evaluate(() => { const a = RaschApp.state.adv, it = RaschApp.state.interp; return { lights: it.lights.map((l) => l.key + ":" + l.status), synth: it.synthesis.length, actions: it.actions.length, scored: !!a.scored, sim: a.sim && a.sim.reps, cm: a.cmle && a.cmle.rmsd, timing: a.timing }; });
+    check("Tes Performansi: analisis lengkap selesai", st.synth >= 3 && st.scored && st.sim === 50, `${secs.toFixed(0)} s; ${JSON.stringify(st)}`);
+    await shot("4b_sintesis");
+    await tab("Kualitas Data"); await shot("13_kualitas_data");
+    await tab("Dimensionality");
+    await page.click('#panels .tabpanel.active button:has-text("Kalibrasi per blok")');
+    await page.waitForFunction(() => RaschApp.state.blockCal && RaschApp.state.blockCal.length === 4, null, { timeout: 60000 });
+    await shot("14_dimensi");
+    check("Tes Performansi: kalibrasi per blok", true);
+    const ax = await dl("#btn-excel");
+    const sh = JSON.parse(execFileSync(py, ["-c", `import json, openpyxl; wb = openpyxl.load_workbook(r"${ax}", read_only=True); print(json.dumps(wb.sheetnames))`]).toString());
+    check("Tes Performansi: Excel memuat lembar diagnostik lanjutan", ["Kualitas Person", "Sensitivitas", "Simulasi", "Kalibrasi per Blok", "DIF Lanjutan", "Residual Terstandar", "Konfigurasi"].every((n) => sh.includes(n)), sh.length + " lembar");
+    const au = await dl("#btn-audit");
+    const ai = JSON.parse(execFileSync(py, ["-c", `
+import json, zipfile, csv, io
+z = zipfile.ZipFile(r"${au}")
+n = z.namelist()
+res = list(csv.reader(io.StringIO(z.read("audit_raschlite/standardized_residuals.csv").decode("utf-8-sig"))))
+cfg = json.loads(z.read("audit_raschlite/config.json"))
+print(json.dumps({"names": n, "rows": len(res), "cols": len(res[0]), "treatment": cfg["options"]["treatment"], "seed": cfg["options"]["seed"]}))`]).toString());
+    check("Tes Performansi: berkas audit (butir, person, residual, konfigurasi)", ai.names.length >= 5 && ai.rows === 266 && ai.cols === 90 && ai.treatment === "lo1999", JSON.stringify(ai).slice(0, 200));
+  }
 
   // Data tidak valid
   await page.click("#btn-new");

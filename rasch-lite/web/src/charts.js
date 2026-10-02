@@ -576,6 +576,72 @@
     return finish(svg, title);
   }
 
+
+  // ------------------------------------------------------------------------------------
+  // Grafik diagnostik lanjutan (versi HTML)
+  // ------------------------------------------------------------------------------------
+  /** Persentase not-reached dan omitted menurut posisi butir di setiap blok. */
+  function missingPattern(ms, blocks) {
+    const t = TH();
+    const title = "Missing Responses by Item Position";
+    const svg = figure(760, 470, title, "Not-reached: blank after the last answered item in the block; omitted: blank before it");
+    const maxPos = Math.max(...blocks.blocks.map((b) => b.items.length));
+    const ymax = Math.max(10, ...ms.perItem.map((r) => r.pct_not_reached + r.pct_omitted)) * 1.1;
+    const p = new Panel(svg, 70, 64, 640, 300, [0.5, maxPos + 0.5], [0, ymax]);
+    p.frame({ xTicks: niceTicks(1, maxPos, Math.min(maxPos, 12)).filter((v) => Number.isInteger(v)) });
+    const items = [];
+    blocks.blocks.forEach((b, k) => {
+      const color = t.SERIES[k % t.SERIES.length];
+      const rows = b.items.map((i) => ms.perItem[i]);
+      p.line(rows.map((r) => r.position), rows.map((r) => r.pct_not_reached), color, 2.5);
+      rows.forEach((r) => p.point(r.position, r.pct_not_reached, 4, color, `${r.item}: not-reached ${num(r.pct_not_reached, 1)}%, omitted ${num(r.pct_omitted, 1)}%`));
+      if (rows.some((r) => r.pct_omitted > 0)) p.line(rows.map((r) => r.position), rows.map((r) => r.pct_omitted), color, 1.5, `stroke-dasharray="5 4"`);
+      items.push({ label: `${b.name} not-reached`, color, kind: "line" });
+    });
+    if (ms.omitted > 0) items.push({ label: "Omitted (dashed)", color: t.INK_MUTED, kind: "line", width: 1.5 });
+    legend(svg, p.x, p.y + p.h + 62, items, { cols: 4, colWidth: 160 });
+    p.xlabel("Item position within block"); p.ylabel("Persons (%)", 46);
+    return finish(svg, title);
+  }
+
+  /** Sebaran first contrast eigenvalue pada data simulasi dibandingkan nilai teramati. */
+  function nullEigen(sim, observed) {
+    const t = TH(), vals = sim.eig_values.filter(isF);
+    const title = "First Contrast Eigenvalue: Observed vs Model-Fitting Simulations";
+    const svg = figure(760, 440, title, `${sim.reps} simulated data sets with the same persons, items and missing pattern; P95 = ${num(sim.eig_p95)}`);
+    const lo = Math.min(...vals, observed) - 0.2, hi = Math.max(...vals, observed) + 0.3;
+    const bins = 20, w = (hi - lo) / bins, cnt = new Array(bins).fill(0);
+    vals.forEach((v) => { cnt[Math.min(bins - 1, Math.floor((v - lo) / w))]++; });
+    const p = new Panel(svg, 70, 64, 640, 280, [lo, hi], [0, Math.max(...cnt) * 1.2 + 0.5]);
+    p.frame();
+    cnt.forEach((c, k) => { if (!c) return; const x1 = p.sx(lo + k * w) + 1, x2 = p.sx(lo + (k + 1) * w) - 1; svg.push(`<rect x="${x1}" y="${p.sy(c)}" width="${Math.max(x2 - x1, 1)}" height="${p.sy(0) - p.sy(c)}" fill="${t.NAVY_SERIES}" fill-opacity="0.7"><title>${c} replications</title></rect>`); });
+    p.vline(sim.eig_p95, t.OCHRE, 2, `stroke-dasharray="6 4"`);
+    p.vline(observed, t.PROBLEM, 2.5);
+    svg.push(text(p.sx(observed) + 6, p.y + 16, `observed ${num(observed)}`, { size: 12, color: t.PROBLEM }));
+    legend(svg, p.x, p.y + p.h + 62, [{ label: "Simulated eigenvalues", color: t.NAVY_SERIES, kind: "patch", opacity: 0.7 },
+      { label: "95th percentile (threshold)", color: t.OCHRE, kind: "line" }, { label: "Observed", color: t.PROBLEM, kind: "line" }], { cols: 3, colWidth: 210 });
+    p.xlabel("First contrast eigenvalue"); p.ylabel("Replications", 46);
+    return finish(svg, title);
+  }
+
+  /** Efisiensi informasi per person terhadap person measure. */
+  function infoEfficiency(res, rt) {
+    const t = TH(), ps = res.persons.filter((x) => !x.extreme && isF(x.measure));
+    const eff = rt.info_eff;
+    const title = "Information Efficiency at Each Person's Location";
+    const svg = figure(760, 450, title, "Test information at the person's measure divided by the maximum attainable from the items answered");
+    const xs = ps.map((x) => x.measure);
+    const p = new Panel(svg, 70, 64, 640, 300, [Math.min(...xs) - 0.3, Math.max(...xs) + 0.3], [0, 1]);
+    p.frame({ yTicks: [0, 0.25, 0.5, 0.75, 1], yLabels: ["0%", "25%", "50%", "75%", "100%"] });
+    p.hspan(0.7, 1, t.STATUS.hijau, 0.1);
+    ps.forEach((x, k) => p.point(x.measure, eff[k], 3.5, eff[k] < 0.5 ? t.PROBLEM : t.NAVY_SERIES, `${x.person}: measure ${num(x.measure)}, efficiency ${num(100 * eff[k], 0)}%`, `fill-opacity="0.75"`));
+    p.hline(rt.info_eff_median, t.OCHRE, 2, `stroke-dasharray="6 4"`);
+    legend(svg, p.x, p.y + p.h + 62, [{ label: "Person", color: t.NAVY_SERIES, kind: "dot" }, { label: "Below 50%", color: t.PROBLEM, kind: "dot" },
+      { label: `Median ${num(100 * rt.info_eff_median, 0)}%`, color: t.OCHRE, kind: "line" }], { cols: 3, colWidth: 200 });
+    p.xlabel("Person measure (logit)"); p.ylabel("Information efficiency", 52);
+    return finish(svg, title);
+  }
+
   // ------------------------------------------------------------------------------------
   // Registri
   // ------------------------------------------------------------------------------------
@@ -595,7 +661,7 @@
   function render(res, key, item) { const spec = specs().find((s) => s.key === key); return spec.perItem ? FUNCS[key](res, item) : FUNCS[key](res); }
   function howToRead(res, key) { const spec = specs().find((s) => s.key === key); return spec.howToRead[res.model === "dichotomous" ? "dichotomous" : "polytomous"]; }
 
-  const api = { setText, setEngine, render, availableCharts, itemChoices, howToRead, categoryColors, empiricalBins };
+  const api = { setText, setEngine, render, availableCharts, itemChoices, howToRead, categoryColors, empiricalBins, missingPattern, nullEigen, infoEfficiency };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.RaschCharts = api;
 })(typeof window !== "undefined" ? window : globalThis);

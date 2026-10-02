@@ -40,7 +40,7 @@ def build(out: Path) -> Path:
     samples = {k: {"file": v["file"], "csv": sample_path(k).read_text(encoding="utf-8-sig")} for k, v in SAMPLES.items()}
     logo = "data:image/png;base64," + base64.b64encode((BRAND_DIR / "csps_logo.png").read_bytes()).decode("ascii")
     parts = {name: (WEB / "src" / f"{name.lower()}.js").read_text(encoding="utf-8")
-             for name in ("ENGINE", "INTERPRET", "CHARTS", "XLSX", "APP")}
+             for name in ("ENGINE", "INTERPRET", "ADVANCED", "CMLE", "INFERENCE", "CHARTS", "XLSX", "APP")}
     for name, src in parts.items():
         if "</script" in src.lower():
             raise SystemExit(f"{name}: kode tidak boleh memuat '</script'")
