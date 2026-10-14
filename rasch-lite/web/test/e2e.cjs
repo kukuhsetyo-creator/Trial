@@ -115,6 +115,8 @@ print(json.dumps({"n": len(names), "png": len(png), "svg": sum(n.endswith(".svg"
     check(`${model}: CMLE ${model} konvergen`, await page.evaluate(() => RaschApp.state.adv.cmle && RaschApp.state.adv.cmle.converged));
     await tab("Category Structure");
     const nrow = await page.$$eval("#panels .tabpanel.active tbody tr", (r) => r.length);
+    const heads = await page.$$eval("#panels .tabpanel.active thead th", (t) => t.map((x) => x.textContent));
+    check(`${model}: kolom Andrich Threshold (CMLE) tampil`, heads.includes("Andrich Threshold (CMLE)") && (await page.$("#panels .tabpanel.active .banner.info, #panels .tabpanel.active .banner.warning")) !== null);
     check(`${model}: tabel Category Structure`, nrow === gm.categories.length, `${nrow} baris`);
     if (model === "pcm") { await shot("7_category_structure"); await tab("Grafik"); await page.selectOption("#panels .tabpanel.active select >> nth=0", "category_curves"); await page.selectOption("#panels .tabpanel.active select >> nth=1", "A09"); await shot("11_grafik_pcm"); }
   }

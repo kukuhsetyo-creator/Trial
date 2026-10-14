@@ -150,6 +150,25 @@ for (const [model, tau] of [["dichotomous", null], ["rsm", [-1.2, -0.2, 1.4]], [
   if (model === "rsm") cm.tau.forEach((t, j) => near(t.cmle, tau[j] - tau.reduce((s, v) => s + v, 0) / tau.length, 0.15, `tau RSM ${j + 1}`));
 }
 
+// --- 4b. Threshold JMLE vs CMLE: pada 10 item RSM, tau JMLE terkoreksi masih melebar, CMLE tidak ---
+{
+  const b = Array.from({ length: 10 }, (_, i) => -1.5 + 3 * i / 9).map((v, _, a) => v);
+  const bc = b.map((v) => v - b.reduce((s, x) => s + x, 0) / b.length), tau = [-1.2, -0.2, 1.4];
+  let slopeJ = 0; const R = 6, sumJ = [0, 0, 0], sumC = [0, 0, 0];
+  for (let r = 0; r < R; r++) {
+    const sim = simulate({ N: 500, b: bc, tau, seed: 300 + r });
+    const res = E.runAnalysis(E.prepareData(sim.table, { itemCols: items(sim.table), idCol: "ID" }), "rsm", { runDif: false });
+    const tc = A.thresholdComparison(res, C.estimate(res, { se: false }));
+    slopeJ += tc.slope / R;
+    res.categories.forEach((x, k) => { if (x.category >= 1) { sumJ[x.category - 1] += x.threshold / R; sumC[x.category - 1] += tc.byRow[k].cmle / R; } });
+    if (r === 0) ok(tc.few_items && tc.byRow.length === res.categories.length, "thresholdComparison: struktur");
+  }
+  // bias = rata-rata estimasi lintas replikasi dikurangi nilai sebenarnya (bukan galat mutlak per replikasi)
+  const biasJ = sumJ.reduce((s, v, k) => s + Math.abs(v - tau[k]), 0) / 3, biasC = sumC.reduce((s, v, k) => s + Math.abs(v - tau[k]), 0) / 3;
+  ok(slopeJ > 1.02, "tau JMLE terkoreksi masih melebar terhadap CMLE (10 item)", slopeJ.toFixed(3));
+  ok(biasC < biasJ, "bias tau CMLE lebih kecil daripada JMLE terkoreksi", `${biasC.toFixed(3)} vs ${biasJ.toFixed(3)}`);
+}
+
 // --- 5. Person fit lz* dan kualitas respons --------------------------------------------
 {
   const b = Array.from({ length: 30 }, (_, i) => -2.5 + 5 * i / 29);

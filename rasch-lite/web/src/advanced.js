@@ -40,6 +40,7 @@
     DIF_Q: 0.05,                  // Benjamini-Hochberg
     LR_R2_B: 0.035, LR_R2_C: 0.070, // Jodoin & Gierl (2001)
     MH_STRATA: 10,
+    THRESHOLD_FEW_ITEMS: 25,      // di bawah ini tau JMLE terkoreksi masih melebar >= ~2% (studi simulasi RSM/PCM)
     SPEED_NR_SHARE: 0.5, SPEED_NR_CELLS: 0.02, SPEED_TREND: 0.5,
   };
 
@@ -1052,6 +1053,41 @@
   }
 
 
+
+  // ------------------------------------------------------------------------------------
+  // 8b. Andrich threshold JMLE dibandingkan dengan CMLE
+  // ------------------------------------------------------------------------------------
+  /**
+   * Studi simulasi (RSM/PCM, 40 replikasi per kondisi) menunjukkan koreksi (L-1)/L cukup untuk
+   * lokasi item tetapi kurang untuk threshold: tau terkoreksi masih melebar sekitar 5-10% pada
+   * 10 item dan 2-4% pada 25 item, sedangkan CMLE praktis tidak bias. Fungsi ini memasangkan
+   * setiap baris kategori dengan tau CMLE dan meringkas kemiringan tau JMLE terhadap tau CMLE.
+   */
+  function thresholdComparison(res, cm) {
+    if (res.model === "dichotomous" || !res.categories) return null;
+    const nItems = res.coded.itemExtreme.filter((v) => v === 0).length;
+    const out = { n_items: nItems, few_items: nItems < RULES.THRESHOLD_FEW_ITEMS, available: !!(cm && !cm.error), byRow: null };
+    if (!out.available) return out;
+    const pcm = new Map(cm.items.map((r) => [r.item, r]));
+    const pairs = [];
+    out.byRow = res.categories.map((r) => {
+      if (!(r.category >= 1)) return { cmle: NaN, cmle_se: NaN };
+      let v = NaN, se = NaN;
+      if (res.model === "rsm" && cm.tau) { v = cm.tau[r.category - 1].cmle; se = cm.tau[r.category - 1].cmle_se; }
+      else if (pcm.has(r.item) && pcm.get(r.item).cmle_thresholds) v = pcm.get(r.item).cmle_thresholds[r.category - 1];
+      if (isF(v) && isF(r.threshold)) pairs.push([v, r.threshold]);
+      return { cmle: v, cmle_se: se };
+    });
+    if (pairs.length >= 2) {
+      const mx = mean(pairs.map((p) => p[0])), my = mean(pairs.map((p) => p[1]));
+      let sxy = 0, sxx = 0; for (const [x, y] of pairs) { sxy += (x - mx) * (y - my); sxx += (x - mx) ** 2; }
+      out.slope = sxx > 0 ? sxy / sxx : NaN;
+      out.max_abs_difference = Math.max(...pairs.map(([x, y]) => Math.abs(y - x)));
+      out.rmsd = Math.sqrt(mean(pairs.map(([x, y]) => (y - x) ** 2)));
+    }
+    return out;
+  }
+
   // ------------------------------------------------------------------------------------
   // 9. Orkestrasi
   // ------------------------------------------------------------------------------------
@@ -1103,6 +1139,7 @@
         catch (err) { return { error: err.message || String(err) }; }
       });
     }
+    adv.thresholds = thresholdComparison(res, adv.cmle);
     adv.seconds = (Date.now() - t0) / 1000;
     return adv;
   }
@@ -1110,7 +1147,7 @@
   const api = {
     RULES, runAll, setEngine, detectBlocks, blockPrefix, missingStructure, applyTreatment, scorePersonsAnchored, personQuality, sensitivity,
     itemFlags, guessingSignals, tailoredAnalysis, normAnswer, findKeyRow, scoreWithKey, distractors, belowChance, simulate,
-    dimensionExtras, calibrateBlocks, reliabilityTargeting, difExtras, residualMatrix, prepFromRaw, core,
+    dimensionExtras, calibrateBlocks, reliabilityTargeting, thresholdComparison, difExtras, residualMatrix, prepFromRaw, core,
     // utilitas (diuji)
     bhAdjust, chi2Sf, gammaP, binomUpper, spearman, pearson, quantile, wilson, logistic, rng, codeLookup,
   };

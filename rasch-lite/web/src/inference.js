@@ -350,6 +350,29 @@
   }
 
   // ------------------------------------------------------------------------------------
+  // Category functioning: catatan bias threshold JMLE
+  // ------------------------------------------------------------------------------------
+  function categoriesPart(res, adv, base) {
+    const tc = adv.thresholds;
+    if (!tc) return { light: { ...base.light, confidence: null }, section: base.section, actions: [] };
+    const sec = JSON.parse(JSON.stringify(base.section));
+    const actions = [];
+    if (tc.available) {
+      sec.paragraphs.push(`Sebagai pembanding, Andrich threshold juga diestimasi dengan CMLE, yang tidak memerlukan koreksi bias. Kemiringan threshold JMLE terhadap CMLE ` +
+        `${num(tc.slope, 3)} dan selisih terbesar ${num(tc.max_abs_difference, 3)} logit. ` + (tc.slope > 1.02 ? "Threshold JMLE sedikit melebar; jarak antar-threshold sebaiknya dilaporkan dari nilai CMLE (tab Category Structure)." : "Kedua estimator praktis sepakat."));
+      sec.technical.push(T("Threshold JMLE vs CMLE: kemiringan / RMSD / maks.", `${num(tc.slope, 3)} / ${num(tc.rmsd, 3)} / ${num(tc.max_abs_difference, 3)}`, "1 = sepakat; > 1 = JMLE melebar"));
+    } else {
+      sec.paragraphs.push("Koreksi bias JMLE (L-1)/L memadai untuk lokasi item, tetapi studi simulasi RaschLite menunjukkan Andrich threshold masih melebar sekitar 5-10% pada 10 item dan 2-4% pada 25 item. " +
+        "Urutan threshold (disordered atau tidak) tidak terpengaruh, tetapi jarak antar-threshold sedikit dibesar-besarkan.");
+      if (tc.few_items) actions.push({ stage: 5, text: `Skala ini hanya ${tc.n_items} item; jalankan ulang dengan CMLE pembanding aktif bila jarak antar-threshold akan dilaporkan.` });
+    }
+    if (tc.few_items) sec.technical.push(T("Jumlah item (bias threshold JMLE)", String(tc.n_items), `< ${A.RULES.THRESHOLD_FEW_ITEMS}: threshold JMLE cenderung melebar`));
+    sec.actions = sec.actions.concat(actions.map((a) => a.text));
+    sec.references = sec.references.concat(ref("andersen_1970", "wright_douglas_1977"));
+    return { light: { ...base.light, confidence: null }, section: sec, actions };
+  }
+
+  // ------------------------------------------------------------------------------------
   // DIF
   // ------------------------------------------------------------------------------------
   function dif(res, adv, base) {
@@ -501,7 +524,7 @@
       fit: itemFit(res, adv),
       dim: dimensionality(res, adv),
       targeting: targeting(res, adv, { light: lit("targeting"), section: sec("targeting") }),
-      categories: { light: { ...lit("categories"), confidence: null }, section: sec("categories"), actions: [] },
+      categories: categoriesPart(res, adv, { light: lit("categories"), section: sec("categories") }),
       dif: dif(res, adv, { light: lit("dif"), section: sec("dif") }),
       validation: validation(res, adv),
     };

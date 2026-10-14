@@ -302,7 +302,7 @@
     "excluded", "n_persons", "n_items_flagged", "position", "n", "n_options", "n_items_a", "n_items_b", "df_int"]);
   const DEC_X = { p: 3, q: 3, mh_p: 3, mh_q: 3, lr_uniform_p: 3, lr_nonuniform_p: 3, lr_delta_r2: 3, r_observed: 3, r_disattenuated: 3, r_measures: 3, r_pb: 3, r_key: 3,
     coverage: 3, bias: 3, rmse: 3, bias_uncorrected: 3, guttman_gstar: 3, proportion: 3, p_correct: 3, chance: 3, person_reliability: 3, item_reliability: 3,
-    reliability_a: 3, reliability_b: 3, q3: 3, q3_relative: 3, mean_loading: 3, min_loading: 3, max_loading: 3, cmle: 3, cmle_se: 3, jmle: 3, jmle_uncorrected: 3, difference: 3, generating: 3, pct_positive: 1, smith_pct: 1, smith_ci_low: 1, smith_ci_high: 1, pct_omitted: 1, pct_not_reached: 1, last_item_answered_pct: 1, df: 1 };
+    reliability_a: 3, reliability_b: 3, q3: 3, q3_relative: 3, threshold_cmle: 2, threshold_cmle_se: 2, threshold_diff: 3, mean_loading: 3, min_loading: 3, max_loading: 3, cmle: 3, cmle_se: 3, jmle: 3, jmle_uncorrected: 3, difference: 3, generating: 3, pct_positive: 1, smith_pct: 1, smith_ci_low: 1, smith_ci_high: 1, pct_omitted: 1, pct_not_reached: 1, last_item_answered_pct: 1, df: 1 };
   function fmtValue(v, col) {
     if (v === null || v === undefined) return "";
     if (typeof v === "boolean") return v ? S.YES : "";
@@ -343,7 +343,13 @@
     }
     if (key === "categories") {
       if (!res.categories) return null;
-      return { rows: res.categories, cols: TC.categories, flag: res.categories.map((r) => C0.CATEGORY_FLAGS.some((f) => r[f])), muted: res.categories.map(() => false) };
+      const flag = res.categories.map((r) => C0.CATEGORY_FLAGS.some((f) => r[f])), muted = res.categories.map(() => false);
+      const tc = adv && adv.thresholds;
+      if (!tc || !tc.byRow) return { rows: res.categories, cols: TC.categories, flag, muted };
+      const rows = res.categories.map((r, k) => ({ ...r, threshold_cmle: tc.byRow[k].cmle, threshold_cmle_se: tc.byRow[k].cmle_se, threshold_diff: r.threshold - tc.byRow[k].cmle }));
+      const cols = TC.categories.slice(); const at = cols.indexOf("threshold_se") + 1;
+      cols.splice(at, 0, "threshold_cmle", ...(res.model === "rsm" ? ["threshold_cmle_se"] : []), "threshold_diff");
+      return { rows, cols, flag, muted };
     }
     if (key === "dif") {
       if (!res.dif) return null;
@@ -384,6 +390,7 @@
     chi2: "Chi-square", range: "Rentang measure", max_mdc: "MDC maks.",
     cmle: "Measure CMLE", cmle_se: "SE CMLE", jmle: "Measure JMLE", jmle_uncorrected: "JMLE tanpa koreksi", generating: "Parameter pembangkit",
     bias: "Bias", rmse: "RMSE", bias_uncorrected: "Bias tanpa koreksi", coverage: "Cakupan IK 95%", threshold: "Threshold",
+    threshold_cmle: "Andrich Threshold (CMLE)", threshold_cmle_se: "SE (CMLE)", threshold_diff: "JMLE - CMLE",
     measure_a: "Measure A", measure_b: "Measure B", se_a: "SE A", se_b: "SE B", n_a: "n A", n_b: "n B",
   };
   function columnLabel(col, res) { return { ...S.COLUMNS, ...COLX, ...(res ? difLabels(res) : {}) }[col] || col; }
@@ -503,7 +510,7 @@
     add(S.TAB_PERSONS, () => [h("p", { class: "help" }, S.TABLE_HINT + " Baris berwarna: person underfit menurut lz* (dikotomus) atau MNSQ+ZSTD, atau skor setara tebakan."), frameTable(res, "persons")]);
     add("Kualitas Data", () => dataQualityTab(res, adv, svgBox));
     add("Diagnostik Item", () => itemDiagTab(res, adv));
-    add(S.TAB_CATEGORIES, () => (res.categories ? [h("p", { class: "help" }, S.TABLE_HINT), frameTable(res, "categories")] : [h("p", {}, S.NOT_APPLICABLE_CATEGORIES)]));
+    add(S.TAB_CATEGORIES, () => (res.categories ? [thresholdNote(res, adv), h("p", { class: "help" }, S.TABLE_HINT), frameTable(res, "categories")] : [h("p", {}, S.NOT_APPLICABLE_CATEGORIES)]));
     add("Reliabilitas & Targeting", () => reliabilityTab(res, adv, svgBox));
     add(S.TAB_DIMENSION, () => {
       const d = res.dimensionality;
@@ -569,6 +576,23 @@
       out.push(box);
     }
     return h("div", { class: "summary" }, ...out);
+  }
+
+  /** Catatan bias threshold JMLE dan pembanding CMLE (tab Category Structure). */
+  function thresholdNote(res, adv) {
+    const tc = adv && adv.thresholds; if (!tc) return null;
+    const b = h("div");
+    let msg;
+    if (tc.available) {
+      msg = `Kolom Andrich Threshold (CMLE) memuat threshold dari CMLE, yang tidak memerlukan koreksi bias. Kemiringan threshold JMLE terhadap CMLE ${num(tc.slope, 3)}, ` +
+        `selisih terbesar ${num(tc.max_abs_difference, 3)} logit. ` + (tc.slope > 1.02 ? "Threshold JMLE sedikit melebar; untuk melaporkan jarak antar-threshold, pakai nilai CMLE." : "Kedua estimator praktis sepakat.");
+    } else {
+      msg = "Koreksi (L-1)/L pada JMLE memadai untuk lokasi item, tetapi studi simulasi menunjukkan Andrich threshold masih melebar sekitar 5-10% pada 10 item dan 2-4% pada 25 item. " +
+        "Aktifkan 'CMLE sebagai estimator pembanding' di langkah Model untuk menampilkan threshold CMLE sebagai rujukan.";
+    }
+    if (tc.few_items) msg = `Skala ini hanya memiliki ${tc.n_items} item (< ${A.RULES.THRESHOLD_FEW_ITEMS}); pada jumlah item sekecil ini threshold JMLE cenderung melebar walaupun sudah dikoreksi. ` + msg;
+    banner(b, msg, tc.few_items && !tc.available ? "warning" : "info");
+    return b;
   }
 
   function dataQualityTab(res, adv, svgBox) {
