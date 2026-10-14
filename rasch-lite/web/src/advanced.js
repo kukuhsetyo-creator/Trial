@@ -40,7 +40,14 @@
     DIF_Q: 0.05,                  // Benjamini-Hochberg
     LR_R2_B: 0.035, LR_R2_C: 0.070, // Jodoin & Gierl (2001)
     MH_STRATA: 10,
-    THRESHOLD_FEW_ITEMS: 25,      // di bawah ini tau JMLE terkoreksi masih melebar >= ~2% (studi simulasi RSM/PCM)
+    THRESHOLD_FEW_ITEMS: 25,
+    // Pedoman fungsi kategori (Linacre, 2002): jarak antar-threshold minimal menurut jumlah kategori,
+    // diturunkan dari model binomial (3 kategori 1,4; 4 kategori 1,1) dan 1,0 untuk >= 5 kategori.
+    CAT_MIN_ADVANCE: { 3: 1.4, 4: 1.1, default: 1.0 },
+    CAT_MAX_ADVANCE: 5.0,
+    CAT_COHERENCE_MIN: 40,        // % koherensi measure->kategori dan kategori->measure
+    CAT_COHERENCE_GAP: 10,        // ... dan lebih dari 10 poin persen di bawah nilai harapan model
+    CAT_DISORDER_Z: 1.96,      // di bawah ini tau JMLE terkoreksi masih melebar >= ~2% (studi simulasi RSM/PCM)
     SPEED_NR_SHARE: 0.5, SPEED_NR_CELLS: 0.02, SPEED_TREND: 0.5,
   };
 
@@ -1088,6 +1095,148 @@
     return out;
   }
 
+
+  // ------------------------------------------------------------------------------------
+  // 8c. Fungsi kategori Likert (delta dan tau)
+  // ------------------------------------------------------------------------------------
+  /** Peluang kategori pada lokasi relatif t = theta - b untuk threshold tau (panjang m). */
+  function catProbs(t, tau) {
+    const psi = [0]; let s = 0;
+    for (const tk of tau) { s += t - tk; psi.push(s); }
+    const mx = Math.max(...psi), ex = psi.map((v) => Math.exp(v - mx)), z = ex.reduce((a, c) => a + c, 0);
+    return ex.map((v) => v / z);
+  }
+  function bisect(f, lo, hi) { for (let k = 0; k < 80; k++) { const mid = (lo + hi) / 2; if (f(mid) < 0) lo = mid; else hi = mid; } return (lo + hi) / 2; }
+
+  /**
+   * Diagnostik kategori per struktur (RSM: satu struktur bersama; PCM: satu per item):
+   * frekuensi dan bentuk sebaran, observed average, category outfit, Andrich threshold beserta uji
+   * keterurutan, jarak antar-threshold (pedoman Linacre, 2002), koherensi measure-kategori,
+   * peluang puncak dan wilayah modal setiap kategori, Thurstone threshold, dan Rasch half-point
+   * threshold. Jarak antar-threshold dinilai dengan threshold CMLE bila tersedia, karena threshold
+   * JMLE terkoreksi masih melebar (lihat thresholdComparison).
+   */
+  function categoryDiagnostics(res, tcmp) {
+    if (res.model === "dichotomous" || !res.categories) return null;
+    const c = core(res), R = RULES, rsm = res.model === "rsm";
+    const outfitMax = root.RASCH_TEXT ? root.RASCH_TEXT.rules.CATEGORY_OUTFIT_MAX : 2.0;
+    const minCount = root.RASCH_TEXT ? root.RASCH_TEXT.rules.CATEGORY_MIN_COUNT : 10;
+    const groups = new Map();
+    res.categories.forEach((r, k) => { if (!groups.has(r.item)) groups.set(r.item, []); groups.get(r.item).push({ ...r, _k: k }); });
+    const coreIdx = new Map(c.names.map((n, i) => [n, i]));
+    const structures = [];
+    for (const [name, rows] of groups) {
+      const K = rows.length, m = K - 1;
+      const items = rsm ? c.names.map((_, i) => i) : [coreIdx.get(name)].filter((v) => v !== undefined);
+      const useC = !!(tcmp && tcmp.available && tcmp.byRow);
+      const tauJ = rows.slice(1).map((r) => r.threshold), seJ = rows.slice(1).map((r) => r.threshold_se);
+      const tauC = useC ? rows.slice(1).map((r) => tcmp.byRow[r._k].cmle) : null;
+      const tau = useC && tauC.every(isF) ? tauC : tauJ;
+      const source = tau === tauJ ? "JMLE" : "CMLE";
+      const counts = rows.map((r) => r.count), total = counts.reduce((a, b) => a + b, 0);
+      // koherensi: zona kategori = pembulatan skor harapan (Rasch half-point)
+      // nilai harapan model untuk koherensi (pembanding: kategori ujung secara alami kurang koheren)
+      const obsK = new Array(K).fill(0), zoneK = new Array(K).fill(0), hit = new Array(K).fill(0);
+      const eObs = new Array(K).fill(0), eHit = new Array(K).fill(0), KK = c.M + 1;
+      for (const i of items) for (let a = 0; a < c.N; a++) {
+        const q = a * c.L + i; if (!c.obs[q]) continue;
+        const x = c.X0[q], z = Math.min(m, Math.max(0, Math.round(c.mom.E[q])));
+        obsK[x]++; zoneK[z]++; if (x === z) hit[x]++;
+        for (let k = 0; k <= m; k++) { const p = c.mom.P[q * KK + k]; eObs[k] += p; if (k === z) eHit[k] += p; }
+      }
+      // kurva peluang
+      const grid = []; for (let t = -10; t <= 10; t += 0.01) grid.push(t);
+      const peak = new Array(K).fill(0), modal = new Array(K).fill(0);
+      for (const t of grid) { const p = catProbs(t, tau); let best = 0; p.forEach((v, k) => { if (v > peak[k]) peak[k] = v; if (v > p[best]) best = k; }); modal[best] += 0.01; }
+      const thurstone = Array.from({ length: m }, (_, k) => bisect((t) => catProbs(t, tau).slice(k + 1).reduce((a, b) => a + b, 0) - 0.5, -15, 15));
+      const halfPoint = Array.from({ length: m }, (_, k) => bisect((t) => catProbs(t, tau).reduce((a, p, j) => a + p * j, 0) - (k + 0.5), -15, 15));
+      const minAdv = R.CAT_MIN_ADVANCE[K] ?? R.CAT_MIN_ADVANCE.default;
+      const steps = [];
+      for (let k = 1; k < m; k++) {
+        const adv = tau[k] - tau[k - 1];
+        const advJ = tauJ[k] - tauJ[k - 1], se = Math.sqrt(seJ[k] ** 2 + seJ[k - 1] ** 2);
+        steps.push({ from: rows[k].label, to: rows[k + 1].label, advance: adv, advance_jmle: advJ, z: se > 0 ? advJ / se : NaN, source,
+          masked_by_jmle: source === "CMLE" && adv < 0 && advJ >= 0,
+          disordered: adv < 0, disordered_sig: se > 0 && advJ / se < -R.CAT_DISORDER_Z, narrow: adv >= 0 && adv < minAdv, wide: adv > R.CAT_MAX_ADVANCE });
+      }
+      const cats = rows.map((r, k) => ({
+        item: name, category: k, label: r.label, count: r.count, percent: total ? 100 * r.count / total : NaN, avg_measure: r.avg_measure,
+        outfit_mnsq: r.outfit_mnsq, threshold_jmle: k ? tauJ[k - 1] : NaN, threshold_cmle: k && tauC ? tauC[k - 1] : NaN,
+        thurstone: k ? thurstone[k - 1] : NaN, half_point: k ? halfPoint[k - 1] : NaN, peak_probability: peak[k], modal_width: modal[k] > 0.015 ? modal[k] : 0,
+        coherence_cm: obsK[k] ? 100 * hit[k] / obsK[k] : NaN, coherence_mc: zoneK[k] ? 100 * hit[k] / zoneK[k] : NaN,
+        coherence_cm_exp: eObs[k] ? 100 * eHit[k] / eObs[k] : NaN, coherence_mc_exp: zoneK[k] ? 100 * eHit[k] / zoneK[k] : NaN,
+        flag_low_count: r.count < minCount, flag_outfit: !!r.flag_outfit_high, flag_avg: !!r.flag_disordered_avg, // outfit >= batas DAN melampaui harapan model (aturan engine)
+        flag_never_modal: k > 0 && k < m && modal[k] <= 0.015,
+        // tidak koheren: di bawah 40% (Linacre, 2002) DAN lebih dari 10 poin di bawah harapan model
+        flag_incoherent: (obsK[k] > 0 && 100 * hit[k] / obsK[k] < R.CAT_COHERENCE_MIN && 100 * (eHit[k] / eObs[k] - hit[k] / obsK[k]) > R.CAT_COHERENCE_GAP) ||
+          (zoneK[k] > 0 && 100 * hit[k] / zoneK[k] < R.CAT_COHERENCE_MIN && 100 * (eHit[k] - hit[k]) / zoneK[k] > R.CAT_COHERENCE_GAP),
+      }));
+      const dips = counts.map((v, k) => k > 0 && k < m && v < counts[k - 1] && v < counts[k + 1]);
+      const checks = [
+        { key: "count", label: `Setiap kategori >= ${minCount} observasi`, ok: cats.every((x) => !x.flag_low_count), detail: cats.filter((x) => x.flag_low_count).map((x) => `${x.label} (${x.count})`).join(", ") },
+        { key: "shape", label: "Sebaran observasi teratur (tanpa lembah di kategori tengah)", ok: !dips.some(Boolean), detail: cats.filter((_, k) => dips[k]).map((x) => x.label).join(", ") },
+        { key: "average", label: "Observed average naik berurutan", ok: cats.every((x) => !x.flag_avg), detail: cats.filter((x) => x.flag_avg).map((x) => x.label).join(", ") },
+        { key: "outfit", label: `Category outfit MNSQ < ${outfitMax} (atau tidak melampaui harapan model)`, ok: cats.every((x) => !x.flag_outfit), detail: cats.filter((x) => x.flag_outfit).map((x) => `${x.label} (${x.outfit_mnsq.toFixed(2)})`).join(", ") },
+        { key: "ordered", label: `Andrich threshold berurutan (${source})`, ok: steps.every((x) => !x.disordered), detail: steps.filter((x) => x.disordered).map((x) => `${x.from}->${x.to}${x.disordered_sig ? " (bermakna)" : ""}`).join(", ") },
+        { key: "coherence", label: `Koherensi measure-kategori >= ${R.CAT_COHERENCE_MIN}% atau sesuai harapan model`, ok: cats.every((x) => !x.flag_incoherent), detail: cats.filter((x) => x.flag_incoherent).map((x) => x.label).join(", ") },
+        { key: "advance_min", label: `Jarak antar-threshold >= ${minAdv} logit (${source})`, ok: steps.every((x) => x.disordered || !x.narrow), detail: steps.filter((x) => x.narrow).map((x) => `${x.from}->${x.to} ${x.advance.toFixed(2)}`).join(", ") },
+        { key: "advance_max", label: `Jarak antar-threshold <= ${R.CAT_MAX_ADVANCE} logit`, ok: steps.every((x) => !x.wide), detail: steps.filter((x) => x.wide).map((x) => `${x.from}->${x.to} ${x.advance.toFixed(2)}`).join(", ") },
+      ];
+      structures.push({ item: name, n_categories: K, n_obs: total, source, min_advance: minAdv, cats, steps, checks,
+        n_violations: checks.filter((x) => !x.ok).length, never_modal: cats.filter((x) => x.flag_never_modal).map((x) => x.label),
+        masked: steps.filter((x) => x.masked_by_jmle).map((x) => `${x.from}->${x.to}`) });
+    }
+    return { model: res.model, structures, source: structures.length ? structures[0].source : "JMLE" };
+  }
+
+  /** Rencana penggabungan: kategori bermasalah digabung dengan tetangga yang lebih jarang dipakai. */
+  function collapsePlan(st) {
+    const K = st.cats.length, bad = new Set();
+    st.cats.forEach((x, k) => { if (x.flag_never_modal || x.flag_low_count) bad.add(k); });
+    st.steps.forEach((s, j) => { if (s.disordered) bad.add(j + 1); });
+    if (!bad.size || K <= 2) return null;
+    const groups = st.cats.map((_, k) => [k]);
+    for (const k of [...bad].sort((a, b) => a - b)) {
+      const gi = groups.findIndex((g) => g.includes(k)); if (gi < 0 || groups.length <= 2) continue;
+      const left = gi > 0 ? groups[gi - 1] : null, right = gi < groups.length - 1 ? groups[gi + 1] : null;
+      const cnt = (g) => g.reduce((s, j) => s + st.cats[j].count, 0);
+      const target = !left ? gi + 1 : !right ? gi - 1 : cnt(left) <= cnt(right) ? gi - 1 : gi + 1;
+      const lo = Math.min(gi, target);
+      groups.splice(lo, 2, [...groups[lo], ...groups[lo + 1]]);
+    }
+    return groups;
+  }
+
+  /** Jalankan ulang analisis dengan kategori bermasalah digabung; bandingkan dengan analisis awal. */
+  async function collapseStudy(res, prep, diag, opts = {}) {
+    if (!diag) return null;
+    const labelsOf = res.coded.categoryLabels; // per item: label kode -> "nilai+nilai"
+    const itemIdx = new Map(prep.itemNames.map((n, i) => [n, i]));
+    const summary = (r) => ({ n_items_flagged: itemFlags(r).rows.filter((x) => x.status === "serius" || x.status === "telaah").length,
+      person_reliability: r.summary.person_reliability, person_separation: r.summary.person_separation, item_mean_infit: r.summary.item_mean_infit,
+      disordered: r.categories ? r.categories.filter((x) => x.flag_disordered_threshold).length : 0 });
+    const base = { scenario: "Kategori asli", ...summary(res) };
+    const out = [base];
+    const targets = diag.structures.map((st) => ({ st, plan: collapsePlan(st) })).filter((x) => x.plan).slice(0, opts.maxScenarios ?? 6);
+    for (const { st, plan } of targets) {
+      await tick();
+      const items = res.model === "rsm" ? res.coded.itemNames : [st.item];
+      const raw = prep.raw.map((r) => r.slice());
+      for (const name of items) {
+        const gi = res.coded.itemNames.indexOf(name), pj = itemIdx.get(name); if (gi < 0 || pj === undefined) continue;
+        const map = new Map();
+        plan.forEach((g, newCode) => g.forEach((code) => String(labelsOf[gi][code]).split("+").forEach((v) => map.set(Number(v), newCode))));
+        raw.forEach((r) => { const v = r[pj]; if (!Number.isNaN(v) && map.has(v)) r[pj] = map.get(v); });
+      }
+      const text = plan.map((g) => g.map((k) => st.cats[k].label).join("+")).join(" | ");
+      try {
+        const r2 = E.runAnalysis(prepFromRaw(prep, raw), res.model, { runDif: false, strictFit: res.settings.strict_fit });
+        out.push({ scenario: `${st.item}: ${text}`, ...summary(r2) });
+      } catch (err) { out.push({ scenario: `${st.item}: ${text}`, error: err.message || String(err) }); }
+    }
+    return out;
+  }
+
   // ------------------------------------------------------------------------------------
   // 9. Orkestrasi
   // ------------------------------------------------------------------------------------
@@ -1140,6 +1289,10 @@
       });
     }
     adv.thresholds = thresholdComparison(res, adv.cmle);
+    if (res.model !== "dichotomous") {
+      adv.categories = categoryDiagnostics(res, adv.thresholds);
+      adv.collapse = await time("collapse", "Fungsi kategori Likert dan simulasi penggabungan kategori", () => collapseStudy(res, prep, adv.categories));
+    }
     adv.seconds = (Date.now() - t0) / 1000;
     return adv;
   }
@@ -1147,7 +1300,7 @@
   const api = {
     RULES, runAll, setEngine, detectBlocks, blockPrefix, missingStructure, applyTreatment, scorePersonsAnchored, personQuality, sensitivity,
     itemFlags, guessingSignals, tailoredAnalysis, normAnswer, findKeyRow, scoreWithKey, distractors, belowChance, simulate,
-    dimensionExtras, calibrateBlocks, reliabilityTargeting, thresholdComparison, difExtras, residualMatrix, prepFromRaw, core,
+    dimensionExtras, calibrateBlocks, reliabilityTargeting, thresholdComparison, categoryDiagnostics, collapsePlan, collapseStudy, catProbs, difExtras, residualMatrix, prepFromRaw, core,
     // utilitas (diuji)
     bhAdjust, chi2Sf, gammaP, binomUpper, spearman, pearson, quantile, wilson, logistic, rng, codeLookup,
   };

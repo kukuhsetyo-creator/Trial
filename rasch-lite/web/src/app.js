@@ -299,10 +299,11 @@
   // Tabel
   // --------------------------------------------------------------------------------------
   const INT_COLS = new Set(["score", "count", "max_score", "n_categories", "category", "n_a", "n_b", "not_reached", "answered", "omitted", "n_items", "persons_not_attempted",
-    "excluded", "n_persons", "n_items_flagged", "position", "n", "n_options", "n_items_a", "n_items_b", "df_int"]);
+    "excluded", "n_persons", "n_items_flagged", "n_obs", "n_violations", "disordered", "position", "n", "n_options", "n_items_a", "n_items_b", "df_int"]);
   const DEC_X = { p: 3, q: 3, mh_p: 3, mh_q: 3, lr_uniform_p: 3, lr_nonuniform_p: 3, lr_delta_r2: 3, r_observed: 3, r_disattenuated: 3, r_measures: 3, r_pb: 3, r_key: 3,
     coverage: 3, bias: 3, rmse: 3, bias_uncorrected: 3, guttman_gstar: 3, proportion: 3, p_correct: 3, chance: 3, person_reliability: 3, item_reliability: 3,
-    reliability_a: 3, reliability_b: 3, q3: 3, q3_relative: 3, threshold_cmle: 2, threshold_cmle_se: 2, threshold_diff: 3, mean_loading: 3, min_loading: 3, max_loading: 3, cmle: 3, cmle_se: 3, jmle: 3, jmle_uncorrected: 3, difference: 3, generating: 3, pct_positive: 1, smith_pct: 1, smith_ci_low: 1, smith_ci_high: 1, pct_omitted: 1, pct_not_reached: 1, last_item_answered_pct: 1, df: 1 };
+    reliability_a: 3, reliability_b: 3, q3: 3, q3_relative: 3, threshold_cmle: 2, threshold_cmle_se: 2, threshold_diff: 3, threshold_jmle: 2, thurstone: 2, half_point: 2, peak_probability: 2, modal_width: 2,
+    coherence_cm: 0, coherence_cm_exp: 0, coherence_mc: 0, coherence_mc_exp: 0, advance: 2, advance_jmle: 2, mean_loading: 3, min_loading: 3, max_loading: 3, cmle: 3, cmle_se: 3, jmle: 3, jmle_uncorrected: 3, difference: 3, generating: 3, pct_positive: 1, smith_pct: 1, smith_ci_low: 1, smith_ci_high: 1, pct_omitted: 1, pct_not_reached: 1, last_item_answered_pct: 1, df: 1 };
   function fmtValue(v, col) {
     if (v === null || v === undefined) return "";
     if (typeof v === "boolean") return v ? S.YES : "";
@@ -390,6 +391,11 @@
     chi2: "Chi-square", range: "Rentang measure", max_mdc: "MDC maks.",
     cmle: "Measure CMLE", cmle_se: "SE CMLE", jmle: "Measure JMLE", jmle_uncorrected: "JMLE tanpa koreksi", generating: "Parameter pembangkit",
     bias: "Bias", rmse: "RMSE", bias_uncorrected: "Bias tanpa koreksi", coverage: "Cakupan IK 95%", threshold: "Threshold",
+    label: "Kategori", percent: "%", avg_measure: "Observed average", outfit_mnsq: "Outfit MNSQ", threshold_jmle: "Tau JMLE", thurstone: "Thurstone", half_point: "Rasch half-point",
+    peak_probability: "Peluang puncak", modal_width: "Lebar modal", coherence_cm: "Kategori->measure (%)", coherence_cm_exp: "Harapan (%)", coherence_mc: "Measure->kategori (%)", coherence_mc_exp: "Harapan (%) ",
+    source: "Sumber", from: "Dari", to: "Ke", advance: "Jarak", advance_jmle: "Jarak JMLE", disordered: "Tidak berurutan", disordered_sig: "Bermakna", masked_by_jmle: "Tertutup pada JMLE", narrow: "Terlalu sempit", wide: "Terlalu lebar",
+    n_obs: "Observasi", n_violations: "Pelanggaran", chk_count: "Observasi >= 10", chk_shape: "Sebaran teratur", chk_average: "Observed average", chk_outfit: "Outfit < 2", chk_ordered: "Threshold berurutan",
+    chk_coherence: "Koherensi", chk_advance_min: "Jarak minimum", chk_advance_max: "Jarak maksimum", item_mean_infit: "Rata-rata infit item",
     threshold_cmle: "Andrich Threshold (CMLE)", threshold_cmle_se: "SE (CMLE)", threshold_diff: "JMLE - CMLE",
     measure_a: "Measure A", measure_b: "Measure B", se_a: "SE A", se_b: "SE B", n_a: "n A", n_b: "n B",
   };
@@ -510,7 +516,7 @@
     add(S.TAB_PERSONS, () => [h("p", { class: "help" }, S.TABLE_HINT + " Baris berwarna: person underfit menurut lz* (dikotomus) atau MNSQ+ZSTD, atau skor setara tebakan."), frameTable(res, "persons")]);
     add("Kualitas Data", () => dataQualityTab(res, adv, svgBox));
     add("Diagnostik Item", () => itemDiagTab(res, adv));
-    add(S.TAB_CATEGORIES, () => (res.categories ? [thresholdNote(res, adv), h("p", { class: "help" }, S.TABLE_HINT), frameTable(res, "categories")] : [h("p", {}, S.NOT_APPLICABLE_CATEGORIES)]));
+    add(S.TAB_CATEGORIES, () => (res.categories ? [thresholdNote(res, adv), h("p", { class: "help" }, S.TABLE_HINT), frameTable(res, "categories"), ...categoryDiagTab(res, adv)] : [h("p", {}, S.NOT_APPLICABLE_CATEGORIES)]));
     add("Reliabilitas & Targeting", () => reliabilityTab(res, adv, svgBox));
     add(S.TAB_DIMENSION, () => {
       const d = res.dimensionality;
@@ -593,6 +599,38 @@
     if (tc.few_items) msg = `Skala ini hanya memiliki ${tc.n_items} item (< ${A.RULES.THRESHOLD_FEW_ITEMS}); pada jumlah item sekecil ini threshold JMLE cenderung melebar walaupun sudah dikoreksi. ` + msg;
     banner(b, msg, tc.few_items && !tc.available ? "warning" : "info");
     return b;
+  }
+
+  const CHECK_COLS = { count: "Observasi", shape: "Sebaran", average: "Observed avg.", outfit: "Outfit", ordered: "Berurutan", coherence: "Koherensi", advance_min: "Jarak min.", advance_max: "Jarak maks." };
+  function checkRows(cd) {
+    return cd.structures.map((st) => {
+      const row = { item: st.item, n_categories: st.n_categories, n_obs: st.n_obs, n_violations: st.n_violations };
+      st.checks.forEach((c) => { row["chk_" + c.key] = c.ok ? "ya" : "TIDAK" + (c.detail ? `: ${c.detail}` : ""); });
+      return row;
+    });
+  }
+  /** Diagnostik kategori Likert: pedoman Linacre, delta/tau, koherensi, simulasi penggabungan. */
+  function categoryDiagTab(res, adv) {
+    const cd = adv && adv.categories; if (!cd) return [];
+    const out = [h("h3", {}, "Pedoman fungsi kategori (Linacre, 2002)"),
+      h("p", { class: "help" }, `Jarak antar-threshold dinilai dengan threshold ${cd.source}. Koherensi ditandai bila di bawah ${A.RULES.CAT_COHERENCE_MIN}% dan lebih dari ${A.RULES.CAT_COHERENCE_GAP} poin di bawah nilai harapan model, karena kategori ujung secara alami kurang koheren.`),
+      advTable(checkRows(cd), ["item", "n_categories", "n_obs", "n_violations", ...Object.keys(CHECK_COLS).map((k) => "chk_" + k)], (r) => r.n_violations > 0, res)];
+    const show = cd.structures.filter((st) => res.model === "rsm" || st.n_violations);
+    out.push(h("h3", {}, "Delta, tau, dan perilaku setiap kategori"),
+      h("p", { class: "help" }, "Andrich threshold (tau) adalah titik ketika dua kategori bertetangga sama mungkin dipilih; delta = lokasi item + tau. Thurstone threshold adalah titik ketika peluang memilih kategori itu atau lebih tinggi mencapai 50%, dan Rasch half-point adalah titik ketika skor harapan melewati setengah kategori; keduanya selalu berurutan. Semua nilai relatif terhadap lokasi item (logit). Lebar modal = rentang measure tempat kategori menjadi pilihan paling mungkin."));
+    for (const st of show.slice(0, 15)) {
+      out.push(h("details", { open: res.model === "rsm" ? true : null }, h("summary", {}, `${st.item}: ${st.n_violations} pelanggaran pedoman`),
+        advTable(st.cats, ["label", "count", "percent", "avg_measure", "outfit_mnsq", "threshold_jmle", "threshold_cmle", "thurstone", "half_point", "peak_probability", "modal_width", "coherence_cm", "coherence_cm_exp", "coherence_mc", "coherence_mc_exp"],
+          (r) => r.flag_low_count || r.flag_outfit || r.flag_avg || r.flag_never_modal || r.flag_incoherent, res),
+        advTable(st.steps, ["from", "to", "advance", "advance_jmle", "z", "disordered", "disordered_sig", "masked_by_jmle", "narrow", "wide"], (r) => r.disordered || r.narrow || r.wide, res)));
+    }
+    if (show.length > 15) out.push(h("p", { class: "mini" }, `${show.length - 15} struktur lain dengan pelanggaran ada di ekspor Excel.`));
+    if (adv.collapse && adv.collapse.length > 1) {
+      out.push(h("h3", {}, "Simulasi penggabungan kategori"),
+        h("p", { class: "help" }, "Kategori yang tidak pernah modal, jarang dipakai, atau berada di antara threshold yang tidak berurutan digabung dengan tetangga yang lebih jarang dipakai, lalu analisis dijalankan ulang. Keputusan akhir tetap harus mempertimbangkan makna label kategori."),
+        advTable(adv.collapse, ["scenario", "person_reliability", "person_separation", "item_mean_infit", "n_items_flagged", "disordered"], (r) => r.disordered < adv.collapse[0].disordered, res));
+    }
+    return out;
   }
 
   function dataQualityTab(res, adv, svgBox) {
@@ -856,6 +894,12 @@
     if (adv.dif && adv.dif.table) sheet("DIF Lanjutan", adv.dif.table, ["item", "group_a", "group_b", "measure_a", "measure_b", "contrast", "joint_se", "t", "df", "p", "q", "mdc", "size", "flag", "mh_delta", "mh_p", "mh_q", "mh_ets", "lr_uniform_p", "lr_nonuniform_p", "lr_delta_r2", "lr_class"]);
     if (adv.dif && adv.dif.omnibus) { sheet("DIF Omnibus", adv.dif.omnibus, ["item", "chi2", "df", "p", "q", "range", "max_mdc", "flag"]); sheet("DIF vs Lainnya", adv.dif.vs_rest, ["item", "group_a", "measure_a", "measure_b", "contrast", "joint_se", "p", "q", "mdc", "flag"]); }
     if (adv.cmle && !adv.cmle.error) sheet("CMLE", adv.cmle.items, ["item", "jmle", "jmle_uncorrected", "cmle", "cmle_se", "difference"]);
+    if (adv.categories) {
+      sheet("Pedoman Kategori", checkRows(adv.categories), ["item", "n_categories", "n_obs", "n_violations", ...Object.keys(CHECK_COLS).map((k) => "chk_" + k)]);
+      sheet("Diagnostik Kategori", adv.categories.structures.flatMap((st) => st.cats), ["item", "label", "count", "percent", "avg_measure", "outfit_mnsq", "threshold_jmle", "threshold_cmle", "thurstone", "half_point", "peak_probability", "modal_width", "coherence_cm", "coherence_cm_exp", "coherence_mc", "coherence_mc_exp"]);
+      sheet("Jarak Threshold", adv.categories.structures.flatMap((st) => st.steps.map((x) => ({ item: st.item, ...x }))), ["item", "from", "to", "source", "advance", "advance_jmle", "z", "disordered", "disordered_sig", "masked_by_jmle", "narrow", "wide"]);
+    }
+    if (adv.collapse && adv.collapse.length > 1) sheet("Simulasi Gabung Kategori", adv.collapse, ["scenario", "person_reliability", "person_separation", "item_mean_infit", "n_items_flagged", "disordered"]);
     const rm = A.residualMatrix(res);
     sheets.push({ name: "Residual Terstandar", freeze: true, rows: [[bold("Person", { fill: TH.SAND }), ...rm.items.map((n) => bold(n, { fill: TH.SAND }))],
       ...rm.persons.map((p, a) => [p, ...rm.z[a].map((v) => ({ v: isF(v) ? v : null, dec: 3 }))])] });
@@ -935,6 +979,8 @@ ${advancedReportTables()}
     if (state.blockCal) out += tbl("Kalibrasi per blok", state.blockCal.map(({ result, ...r }) => r), ["block", "n_items", "person_reliability", "item_reliability", "eigenvalue", "n_items_flagged"]);
     if (adv.dif && adv.dif.table) out += tbl("DIF lanjutan", adv.dif.table, ["item", "contrast", "p", "q", "mdc", "flag", "mh_delta", "mh_ets", "lr_delta_r2", "lr_class"].filter((c) => adv.dif.dichotomous || !/^(mh|lr)_/.test(c)));
     if (adv.cmle && !adv.cmle.error) out += tbl("JMLE dan CMLE", adv.cmle.items, ["item", "jmle", "cmle", "cmle_se", "difference"]);
+    if (adv.categories) out += tbl("Pedoman fungsi kategori (Linacre, 2002)", checkRows(adv.categories), ["item", "n_categories", "n_violations", ...Object.keys(CHECK_COLS).map((k) => "chk_" + k)]);
+    if (adv.collapse && adv.collapse.length > 1) out += tbl("Simulasi penggabungan kategori", adv.collapse, ["scenario", "person_reliability", "person_separation", "disordered"]);
     return out ? `<h2 class="title">Diagnostik lanjutan</h2>${out}` : "";
   }
 

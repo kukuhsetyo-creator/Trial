@@ -169,6 +169,28 @@ for (const [model, tau] of [["dichotomous", null], ["rsm", [-1.2, -0.2, 1.4]], [
   ok(biasC < biasJ, "bias tau CMLE lebih kecil daripada JMLE terkoreksi", `${biasC.toFixed(3)} vs ${biasJ.toFixed(3)}`);
 }
 
+// --- 4c. Fungsi kategori Likert: disorder tertanam terdeteksi, rencana penggabungan masuk akal ---
+{
+  const b = Array.from({ length: 8 }, (_, i) => -1.5 + 3 * i / 7);
+  const sim = simulate({ N: 400, b: b.map((v) => v - b.reduce((s, x) => s + x, 0) / b.length), tau: [-1.2, 0.3, -0.3, 1.2], seed: 77 });
+  const res = E.runAnalysis(E.prepareData(sim.table, { itemCols: items(sim.table), idCol: "ID" }), "rsm", { runDif: false });
+  const cd = A.categoryDiagnostics(res, A.thresholdComparison(res, C.estimate(res, { se: true })));
+  const st = cd.structures[0];
+  ok(cd.source === "CMLE" && st.n_categories === 5, "categoryDiagnostics: struktur RSM, sumber CMLE");
+  ok(st.steps[1].disordered && st.checks.find((x) => x.key === "ordered").ok === false, "disorder tertanam (tau2 > tau3) terdeteksi", JSON.stringify(st.steps.map((x) => x.advance.toFixed(2))));
+  ok(st.never_modal.length >= 1, "kategori tengah tidak pernah modal", st.never_modal.join());
+  const plan = A.collapsePlan(st);
+  ok(plan && plan.length === 4 && plan.some((g) => g.length === 2 && g.includes(2)), "rencana penggabungan melibatkan kategori yang tidak modal", JSON.stringify(plan));
+  ok(st.cats.every((x) => x.category === 0 || (Number.isFinite(x.thurstone) && Number.isFinite(x.half_point))), "Thurstone dan half-point terhitung");
+  const th = st.cats.slice(1).map((x) => x.thurstone);
+  ok(th.every((v, k) => k === 0 || v > th[k - 1]), "Thurstone threshold selalu berurutan walaupun Andrich tidak", th.map((v) => v.toFixed(2)).join());
+  // data patuh model dengan threshold lebar: tidak ada pelanggaran keterurutan dan koherensi
+  const sim2 = simulate({ N: 500, b: b.map((v) => v - 0), tau: [-2.4, -0.8, 0.8, 2.4], seed: 78 });
+  const r2 = E.runAnalysis(E.prepareData(sim2.table, { itemCols: items(sim2.table), idCol: "ID" }), "rsm", { runDif: false });
+  const c2 = A.categoryDiagnostics(r2, A.thresholdComparison(r2, C.estimate(r2, { se: false }))).structures[0];
+  ok(c2.checks.filter((x) => !x.ok).length === 0, "data patuh model: semua pedoman terpenuhi", c2.checks.filter((x) => !x.ok).map((x) => x.key + ":" + x.detail).join("; "));
+}
+
 // --- 5. Person fit lz* dan kualitas respons --------------------------------------------
 {
   const b = Array.from({ length: 30 }, (_, i) => -2.5 + 5 * i / 29);

@@ -367,8 +367,38 @@
       if (tc.few_items) actions.push({ stage: 5, text: `Skala ini hanya ${tc.n_items} item; jalankan ulang dengan CMLE pembanding aktif bila jarak antar-threshold akan dilaporkan.` });
     }
     if (tc.few_items) sec.technical.push(T("Jumlah item (bias threshold JMLE)", String(tc.n_items), `< ${A.RULES.THRESHOLD_FEW_ITEMS}: threshold JMLE cenderung melebar`));
+    const cd = adv.categories;
+    if (cd) {
+      const st = cd.structures, rsm = res.model === "rsm";
+      const bad = st.filter((x) => x.n_violations);
+      const lab = (x) => (rsm ? "skala bersama" : x.item);
+      sec.paragraphs.push(`Fungsi kategori dinilai dengan delapan pedoman Linacre (2002): jumlah observasi, keteraturan sebaran, kenaikan observed average, category outfit, ` +
+        `keterurutan Andrich threshold, koherensi measure-kategori, serta jarak antar-threshold minimal ${st[0].min_advance} dan maksimal ${A.RULES.CAT_MAX_ADVANCE} logit. ` +
+        `Jarak antar-threshold dinilai dengan threshold ${cd.source}${cd.source === "CMLE" ? ", karena threshold JMLE melebar secara sistematis" : ""}. ` +
+        (bad.length ? `${bad.length} dari ${st.length} struktur kategori melanggar sekurang-kurangnya satu pedoman: ` +
+          bad.slice(0, 8).map((x) => `${lab(x)} (${x.checks.filter((c) => !c.ok).map((c) => c.key === "advance_min" ? "jarak sempit" : c.key === "advance_max" ? "jarak lebar" : c.key === "count" ? "observasi sedikit" : c.key === "shape" ? "sebaran tidak teratur" : c.key === "average" ? "observed average" : c.key === "outfit" ? "outfit kategori" : c.key === "ordered" ? "threshold tidak berurutan" : "koherensi").join(", ")})`).join("; ") +
+          (bad.length > 8 ? ", dan lainnya." : ".") : "Semua struktur kategori memenuhi pedoman tersebut."));
+      const nm = st.filter((x) => x.never_modal.length);
+      if (nm.length) sec.paragraphs.push(`Kategori yang tidak pernah menjadi pilihan paling mungkin pada measure mana pun: ${nm.map((x) => `${x.item === st[0].item && rsm ? "skala bersama" : x.item} kategori ${x.never_modal.join(", ")}`).join("; ")}. ` +
+        "Responden tampaknya tidak membedakan kategori ini dari tetangganya.");
+      const masked = st.filter((x) => x.masked.length);
+      if (masked.length) {
+        sec.paragraphs.push(`Perhatian: CMLE menunjukkan threshold tidak berurutan pada ${masked.map((x) => `${lab(x)} (${x.masked.join(", ")})`).join("; ")}, sedangkan threshold JMLE masih berurutan. ` +
+          "Studi simulasi RaschLite menunjukkan pelebaran threshold JMLE dapat menutupi disorder yang nyata pada skala pendek; pada kasus ini tafsirkan menurut CMLE.");
+        actions.push({ stage: 3, text: `Periksa kategori ${masked.map((x) => `${lab(x)} ${x.masked.join(", ")}`).join("; ")}: threshold CMLE tidak berurutan walaupun JMLE tampak berurutan.` });
+      }
+      if (adv.collapse && adv.collapse.length > 1) {
+        const b0 = adv.collapse[0], fixed = adv.collapse.slice(1).filter((x) => !x.error && x.disordered < b0.disordered);
+        sec.paragraphs.push(`Simulasi penggabungan: ${adv.collapse.length - 1} skenario menggabungkan kategori bermasalah dengan tetangga yang lebih jarang dipakai lalu menjalankan ulang analisis. ` +
+          adv.collapse.slice(1).filter((x) => !x.error).map((x) => `${x.scenario}: person reliability ${num(b0.person_reliability)} menjadi ${num(x.person_reliability)}, threshold tidak berurutan ${b0.disordered} menjadi ${x.disordered}`).slice(0, 6).join("; ") + ". " +
+          (fixed.length ? "Penggabungan yang menghilangkan disorder tanpa menurunkan reliabilitas secara berarti layak dipertimbangkan, asalkan masuk akal secara makna kategori." : "Tidak ada penggabungan yang jelas lebih baik daripada kategori asli."));
+        for (const x of fixed.filter((x) => x.person_reliability >= b0.person_reliability - 0.02)) actions.push({ stage: 3, text: `Pertimbangkan penggabungan ${x.scenario} untuk analisis berikutnya bila kedua label kategori memang sulit dibedakan responden.` });
+      }
+      sec.technical.push(T("Struktur kategori melanggar pedoman Linacre", `${bad.length} dari ${st.length}`, `jarak dinilai dengan threshold ${cd.source}`));
+      if (masked.length) sec.technical.push(T("Disorder menurut CMLE yang tidak tampak pada JMLE", String(masked.reduce((a, x) => a + x.masked.length, 0)), "tafsirkan menurut CMLE"));
+    }
     sec.actions = sec.actions.concat(actions.map((a) => a.text));
-    sec.references = sec.references.concat(ref("andersen_1970", "wright_douglas_1977"));
+    sec.references = sec.references.concat(ref("andersen_1970", "wright_douglas_1977", "linacre_2002_categories"));
     return { light: { ...base.light, confidence: null }, section: sec, actions };
   }
 

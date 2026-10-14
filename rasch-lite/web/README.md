@@ -27,6 +27,7 @@ Sesudah estimasi, diagnostik berikut dihitung:
 | Dimensionalitas | ambang eigenvalue dan Q3 dari simulasi data patuh model dengan ukuran dan pola kosong yang sama; loading per blok; disattenuated correlation; uji t Smith; kandidat testlet; kalibrasi per blok dalam satu klik |
 | Reliabilitas dan targeting | dekomposisi SD sejati/RMSE, reliabilitas maksimum, proyeksi Spearman-Brown, peringatan seleksi KR-20, efisiensi informasi pada lokasi person |
 | DIF | minimum detectable contrast dan status "belum dapat ditentukan", koreksi Benjamini-Hochberg, purifikasi, Mantel-Haenszel, regresi logistik (uniform dan non-uniform), lebih dari dua kelompok (omnibus), dampak tingkat tes (DTF) |
+| Kategori Likert | delapan pedoman Linacre (2002) per struktur kategori; tau JMLE dan CMLE, Thurstone threshold, Rasch half-point threshold, peluang puncak dan lebar modal setiap kategori; koherensi measure-kategori dibandingkan harapan model; simulasi penggabungan kategori bermasalah |
 | Validasi | CMLE sebagai estimator pembanding (dikotomus, RSM, PCM), studi pemulihan parameter dari simulasi; Andrich threshold CMLE ditampilkan berdampingan dengan threshold JMLE di tab Category Structure |
 
 Ringkasan dibuka dengan sintesis yang menalar hubungan antar-indikator, setiap lampu diberi tingkat keyakinan, dan saran tindakan diurutkan menurut ketergantungan logisnya (kunci dan data, responden, butir, struktur, presisi, keadilan). Templat teks dibedakan antara tes kemampuan dan angket.
@@ -47,6 +48,7 @@ Dari folder `rasch-lite`:
 node web/test/run_tests.mjs                # kesetaraan engine, narasi, dan .xlsx
 node web/test/advanced_tests.cjs           # diagnostik lanjutan dan CMLE (bentuk tertutup, enumerasi, simulasi)
 node web/tools/sim_threshold_bias.cjs rsm 10 500 40   # studi bias delta/tau: JMLE, JMLE (L-1)/L, CMLE
+node web/tools/sim_category_study.cjs 30 [disorder]   # bias tau menurut jumlah kategori/item/person; daya deteksi disorder
 node web/test/e2e.cjs                      # uji browser end-to-end lewat file:// (Playwright)
 ```
 
@@ -58,3 +60,4 @@ node web/test/e2e.cjs                      # uji browser end-to-end lewat file:/
 - **Batasan metode:** sama dengan versi desktop (lihat README utama). lz*, Guttman G*, Mantel-Haenszel, regresi logistik, dan tailored analysis hanya tersedia untuk data dikotomus; untuk politomus, person fit memakai MNSQ yang disertai ZSTD.
 - **Waktu proses:** simulasi dan CMLE adalah bagian terlama (data 265 x 89: sekitar 7 detik untuk 50 simulasi dan 9 detik untuk CMLE beserta standard error). Keduanya dapat dimatikan di langkah Model.
 - **Bias Andrich threshold JMLE:** studi simulasi (`tools/sim_threshold_bias.cjs`) menunjukkan koreksi (L-1)/L memadai untuk lokasi item tetapi kurang untuk threshold: setelah koreksi, threshold masih melebar sekitar 5-10% pada 10 item dan 2-4% pada 25 item, sedangkan CMLE praktis tidak bias. Karena itu threshold CMLE ditampilkan sebagai rujukan, dan aplikasi memberi catatan bila skala memiliki kurang dari 25 item. Urutan threshold (disordered atau tidak) tidak terpengaruh.
+- **Studi kategori Likert** (`tools/sim_category_study.cjs`, RSM, 30 replikasi per kondisi): pelebaran threshold JMLE berperilaku hampir aditif, yaitu setiap jarak antar-threshold bertambah kira-kira 3/L logit untuk 3 kategori, 1,6/L untuk 5 kategori, dan 1,3/L untuk 7 kategori (L = jumlah item), sehingga koreksi perkalian (L-1)/L paling tidak memadai pada skala pendek dengan sedikit kategori dan threshold yang rapat. Pelebaran ini membuat JMLE melewatkan sebagian disorder yang nyata pada skala 5 item (23% replikasi pada N = 200), sedangkan CMLE mendeteksi semuanya. Karena itu keterurutan dan jarak antar-threshold dinilai dengan CMLE bila tersedia.
