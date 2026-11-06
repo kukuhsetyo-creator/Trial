@@ -150,7 +150,8 @@ print(json.dumps({"n": len(names), "png": len(png), "svg": sum(n.endswith(".svg"
     const f = path.join(tmp, "jawaban_mentah.csv"); fs.writeFileSync(f, lines.join("\n"));
     await page.click("#btn-new");
     await page.setInputFiles("#file", f);
-    await page.waitForFunction(() => !document.querySelector("#import-form").hidden);
+    // tunggu berkas baru benar-benar dimuat (formulir impor masih terlihat dari data sebelumnya)
+    await page.waitForFunction(() => document.querySelector("#file-label").textContent.includes("jawaban_mentah.csv"));
     const kb = await page.textContent("#import-banner");
     check("jawaban mentah: baris KUNCI dikenali", kb.includes("Baris kunci ditemukan") && kb.includes("12 butir"), kb.slice(0, 80));
     await page.click("#btn-next1");
