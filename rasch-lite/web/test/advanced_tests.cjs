@@ -276,8 +276,8 @@ for (const [model, tau] of [["dichotomous", null], ["rsm", [-1.2, -0.2, 1.4]], [
       const rB = E.runAnalysis(pB, "dichotomous", {});
       const dB = A.difExtras(rB, pB);
       const std = rB.dif.map((x) => x.contrast);
-      ok(dB.purification_converged || dB.table.every((x, k) => Math.abs(x.contrast - std[k] * 1) < 1e-9 || Math.abs(x.contrast - std[k]) < 1e-6),
-        "purifikasi tak konvergen kembali ke DIF standar", `konvergen=${dB.purification_converged}`);
+      ok(dB.purification_stable || dB.table.every((x, k) => Math.abs(x.contrast - std[k] * 1) < 1e-9 || Math.abs(x.contrast - std[k]) < 1e-6),
+        "purifikasi tak konvergen kembali ke DIF standar", `stabil=${dB.purification_stable}`);
     }
     // tiga kelompok
     rows.forEach((rw, n) => { rw[1] = ["X", "Y", "Z"][n % 3]; });

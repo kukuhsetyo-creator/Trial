@@ -948,9 +948,16 @@
       }
       // Purifikasi yang tidak konvergen (himpunan jangkar terus berganti) menghasilkan DIF yang bergantung
       // pada jangkar terakhir; laporkan analisis standar (theta dari semua item) dan beri catatan.
+      // Purifikasi juga dianggap tidak stabil bila "bergeser": butir yang semula ditandai lepas dan butir lain
+      // yang semula bersih menjadi ditandai, sehingga hasil akhirnya ditentukan oleh jangkar yang berpindah.
+      const finalFlags = rows.filter((r) => r.flag).map((r) => r.item);
+      const init = new Set(initialFlags), fin = new Set(finalFlags);
+      const drift = finalFlags.some((x) => !init.has(x)) && initialFlags.some((x) => !fin.has(x));
       out.purification_converged = converged;
-      out.purified_flags = rows.filter((r) => r.flag).map((r) => r.item);
-      if (!converged) { rows = baseRows; thetaP = c.theta; }
+      out.purification_drift = drift;
+      out.purification_stable = converged && !drift;
+      out.purified_flags = finalFlags;
+      if (!out.purification_stable) { rows = baseRows; thetaP = c.theta; }
       out.purification_iterations = iter; out.initial_flags = initialFlags;
       // Mantel-Haenszel dan regresi logistik (dikotomus), dicocokkan pada theta terpurifikasi
       if (res.model === "dichotomous") {
