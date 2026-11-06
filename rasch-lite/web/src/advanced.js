@@ -932,19 +932,25 @@
       const [ga, gb] = levels;
       // tahap 1: theta dari semua item; tahap 2+: theta dari item yang tidak ditandai (purifikasi)
       let rows = finalize(pairTable(c.theta, ga, gb));
+      const baseRows = rows;
       const initialFlags = rows.filter((r) => r.flag).map((r) => r.item);
-      let flagged = new Set(initialFlags), iter = 0, thetaP = c.theta;
-      while (iter < 5) {
+      let flagged = new Set(initialFlags), iter = 0, thetaP = c.theta, converged = !initialFlags.length;
+      while (iter < 5 && !converged) {
         iter++;
         const anchor = c.names.map((_, i) => i).filter((i) => !flagged.has(c.names[i]));
-        if (anchor.length === c.L || anchor.length < 2) break;
+        if (anchor.length === c.L || anchor.length < 2) { converged = true; break; }
         thetaP = anchoredTheta(c, anchor);
         const rows2 = finalize(pairTable(thetaP, ga, gb));
         const f2 = new Set(rows2.filter((r) => r.flag).map((r) => r.item));
         rows = rows2;
-        if (f2.size === flagged.size && [...f2].every((x) => flagged.has(x))) break;
+        if (f2.size === flagged.size && [...f2].every((x) => flagged.has(x))) { converged = true; break; }
         flagged = f2;
       }
+      // Purifikasi yang tidak konvergen (himpunan jangkar terus berganti) menghasilkan DIF yang bergantung
+      // pada jangkar terakhir; laporkan analisis standar (theta dari semua item) dan beri catatan.
+      out.purification_converged = converged;
+      out.purified_flags = rows.filter((r) => r.flag).map((r) => r.item);
+      if (!converged) { rows = baseRows; thetaP = c.theta; }
       out.purification_iterations = iter; out.initial_flags = initialFlags;
       // Mantel-Haenszel dan regresi logistik (dikotomus), dicocokkan pada theta terpurifikasi
       if (res.model === "dichotomous") {

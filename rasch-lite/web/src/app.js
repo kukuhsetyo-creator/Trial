@@ -727,7 +727,8 @@
     const dx = adv.dif, out = [];
     if (!dx || !dx.levels || dx.levels.length < 2) return res.dif ? withChart(["dif"], h("p", { class: "help" }, S.TABLE_HINT), frameTable(res, "dif")) : [h("p", {}, S.NOT_APPLICABLE_DIF)];
     out.push(h("p", {}, `Kelompok: ${dx.levels.map((g, k) => `${g} (${dx.sizes[k]})`).join(", ")}. MDC median ${num(dx.mdc_median)} logit; ${I.pct(100 * dx.share_detectable)} item mampu mendeteksi DIF besar (${num(A.RULES.DIF_DETECT_TARGET)} logit) dengan daya 80%.` +
-      (dx.purification_iterations ? ` Purifikasi: ${dx.purification_iterations} iterasi.` : "")));
+      (dx.purification_converged === false ? ` Purifikasi tidak konvergen dalam ${dx.purification_iterations} iterasi (himpunan jangkar terus berganti; DIF kemungkinan seimbang ke dua arah), sehingga tabel memakai measure person dari semua item. Butir yang ditandai pada iterasi terakhir purifikasi: ${dx.purified_flags.join(", ") || "-"}.` :
+        dx.purification_iterations ? ` Purifikasi: ${dx.purification_iterations} iterasi.` : "")));
     if (dx.table) {
       const cols = ["item", "contrast", "joint_se", "t", "p", "q", "mdc", "size", "flag"];
       if (dx.dichotomous) cols.push("mh_delta", "mh_p", "mh_q", "mh_ets", "lr_uniform_p", "lr_nonuniform_p", "lr_delta_r2", "lr_class");

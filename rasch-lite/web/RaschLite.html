@@ -3294,19 +3294,25 @@ ol.synth li .conf { margin: 6px 0 0; }
       const [ga, gb] = levels;
       // tahap 1: theta dari semua item; tahap 2+: theta dari item yang tidak ditandai (purifikasi)
       let rows = finalize(pairTable(c.theta, ga, gb));
+      const baseRows = rows;
       const initialFlags = rows.filter((r) => r.flag).map((r) => r.item);
-      let flagged = new Set(initialFlags), iter = 0, thetaP = c.theta;
-      while (iter < 5) {
+      let flagged = new Set(initialFlags), iter = 0, thetaP = c.theta, converged = !initialFlags.length;
+      while (iter < 5 && !converged) {
         iter++;
         const anchor = c.names.map((_, i) => i).filter((i) => !flagged.has(c.names[i]));
-        if (anchor.length === c.L || anchor.length < 2) break;
+        if (anchor.length === c.L || anchor.length < 2) { converged = true; break; }
         thetaP = anchoredTheta(c, anchor);
         const rows2 = finalize(pairTable(thetaP, ga, gb));
         const f2 = new Set(rows2.filter((r) => r.flag).map((r) => r.item));
         rows = rows2;
-        if (f2.size === flagged.size && [...f2].every((x) => flagged.has(x))) break;
+        if (f2.size === flagged.size && [...f2].every((x) => flagged.has(x))) { converged = true; break; }
         flagged = f2;
       }
+      // Purifikasi yang tidak konvergen (himpunan jangkar terus berganti) menghasilkan DIF yang bergantung
+      // pada jangkar terakhir; laporkan analisis standar (theta dari semua item) dan beri catatan.
+      out.purification_converged = converged;
+      out.purified_flags = rows.filter((r) => r.flag).map((r) => r.item);
+      if (!converged) { rows = baseRows; thetaP = c.theta; }
       out.purification_iterations = iter; out.initial_flags = initialFlags;
       // Mantel-Haenszel dan regresi logistik (dikotomus), dicocokkan pada theta terpurifikasi
       if (res.model === "dichotomous") {
@@ -4399,7 +4405,7 @@ ol.synth li .conf { margin: 6px 0 0; }
     else { status = ST.TENTATIVE; sentence = `Belum dapat ditentukan: tidak ada item yang ditandai, tetapi DIF terkecil yang dapat dideteksi (MDC median ${num(dx.mdc_median)} logit) lebih besar daripada DIF besar (${num(R.DIF_DETECT_TARGET)} logit).`; }
     const sizes = dx.levels.map((g, k) => `${g} ${dx.sizes[k]}`).join(", ");
     const paras = [
-      `Kelompok: ${sizes}. Item measure dihitung terpisah untuk tiap kelompok dengan measure person dijangkarkan` + (dx.purification_iterations > 1 ? `; measure person dimurnikan (purifikasi) dari item yang ber-DIF dalam ${dx.purification_iterations} iterasi` : "") + ". " +
+      `Kelompok: ${sizes}. Item measure dihitung terpisah untuk tiap kelompok dengan measure person dijangkarkan` + (dx.purification_converged === false ? `; purifikasi tidak konvergen dalam ${dx.purification_iterations} iterasi (himpunan butir jangkar terus berganti, tanda DIF yang seimbang ke dua arah), sehingga hasil yang dilaporkan memakai measure person dari semua item` : dx.purification_iterations > 1 ? `; measure person dimurnikan (purifikasi) dari item yang ber-DIF dalam ${dx.purification_iterations} iterasi` : "") + ". " +
       `Sebuah item ditandai bila DIF contrast >= ${num(RR.DIF_CONTRAST_MIN, 1)} logit dan q Benjamini-Hochberg < ${num(R.DIF_Q)}, yaitu setelah koreksi untuk ${rows.length / (dx.table ? 1 : dx.n_groups)} uji sekaligus.`,
       `Daya deteksi: dengan ukuran kelompok ini, DIF contrast terkecil yang dapat dideteksi dengan daya 80% (minimum detectable contrast) bermedian ${num(dx.mdc_median)} logit; ` +
       `hanya ${pct(100 * dx.share_detectable)} item yang mampu mendeteksi DIF besar (${num(R.DIF_DETECT_TARGET)} logit).` +
@@ -6244,7 +6250,8 @@ ol.synth li .conf { margin: 6px 0 0; }
     const dx = adv.dif, out = [];
     if (!dx || !dx.levels || dx.levels.length < 2) return res.dif ? withChart(["dif"], h("p", { class: "help" }, S.TABLE_HINT), frameTable(res, "dif")) : [h("p", {}, S.NOT_APPLICABLE_DIF)];
     out.push(h("p", {}, `Kelompok: ${dx.levels.map((g, k) => `${g} (${dx.sizes[k]})`).join(", ")}. MDC median ${num(dx.mdc_median)} logit; ${I.pct(100 * dx.share_detectable)} item mampu mendeteksi DIF besar (${num(A.RULES.DIF_DETECT_TARGET)} logit) dengan daya 80%.` +
-      (dx.purification_iterations ? ` Purifikasi: ${dx.purification_iterations} iterasi.` : "")));
+      (dx.purification_converged === false ? ` Purifikasi tidak konvergen dalam ${dx.purification_iterations} iterasi (himpunan jangkar terus berganti; DIF kemungkinan seimbang ke dua arah), sehingga tabel memakai measure person dari semua item. Butir yang ditandai pada iterasi terakhir purifikasi: ${dx.purified_flags.join(", ") || "-"}.` :
+        dx.purification_iterations ? ` Purifikasi: ${dx.purification_iterations} iterasi.` : "")));
     if (dx.table) {
       const cols = ["item", "contrast", "joint_se", "t", "p", "q", "mdc", "size", "flag"];
       if (dx.dichotomous) cols.push("mh_delta", "mh_p", "mh_q", "mh_ets", "lr_uniform_p", "lr_nonuniform_p", "lr_delta_r2", "lr_class");

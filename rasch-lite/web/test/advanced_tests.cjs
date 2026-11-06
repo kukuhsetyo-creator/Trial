@@ -263,6 +263,22 @@ for (const [model, tau] of [["dichotomous", null], ["rsm", [-1.2, -0.2, 1.4]], [
     ok(dx.table.filter((x) => x.flag).length <= 2, "DIF palsu sedikit", dx.table.filter((x) => x.flag).map((x) => x.item).join());
     ok(dx.mdc_median > 0 && dx.mdc_median < 0.64, "MDC pada n = 400 per kelompok", dx.mdc_median);
     ok(Math.abs(dx.dtf.mean_diff) > 0.05, "DTF menangkap dampak DIF", dx.dtf.mean_diff);
+    ok(typeof dx.purification_converged === "boolean", "status konvergensi purifikasi dilaporkan");
+    // DIF seimbang ke dua arah: bila purifikasi tidak konvergen, tabel kembali ke analisis standar
+    {
+      const r2 = A.rng(33), g2 = () => { let u = 0; while (!u) u = r2(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r2()); };
+      const rowsB = [];
+      for (let n = 0; n < 600; n++) {
+        const grp = n % 2 ? "F" : "M", th = g2();
+        rowsB.push([`p${n}`, grp, ...b.map((bi, i) => { const sh = grp === "F" ? (i < 4 ? 0.9 : i < 8 ? -0.9 : 0) : 0; return r2() < 1 / (1 + Math.exp(-(th - bi - sh))) ? 1 : 0; })]);
+      }
+      const pB = E.prepareData({ columns: cols, rows: rowsB }, { itemCols: cols.slice(2), idCol: "ID", groupCol: "G" });
+      const rB = E.runAnalysis(pB, "dichotomous", {});
+      const dB = A.difExtras(rB, pB);
+      const std = rB.dif.map((x) => x.contrast);
+      ok(dB.purification_converged || dB.table.every((x, k) => Math.abs(x.contrast - std[k] * 1) < 1e-9 || Math.abs(x.contrast - std[k]) < 1e-6),
+        "purifikasi tak konvergen kembali ke DIF standar", `konvergen=${dB.purification_converged}`);
+    }
     // tiga kelompok
     rows.forEach((rw, n) => { rw[1] = ["X", "Y", "Z"][n % 3]; });
     const p3 = E.prepareData({ columns: cols, rows }, { itemCols: cols.slice(2), idCol: "ID", groupCol: "G" });
